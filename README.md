@@ -1,6 +1,5 @@
 # AI-Powered Interview Simulator 🤖
 
-![Hero Image](./public/hero.png)
 
 An advanced, AI-driven interview platform designed to help candidates master their interview skills through realistic simulations, real-time feedback, and personalized coaching.
 
