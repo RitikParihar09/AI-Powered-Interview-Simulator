@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../firebase/firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { Calendar, User, ChevronLeft, Loader2, Clock } from 'lucide-react';
 

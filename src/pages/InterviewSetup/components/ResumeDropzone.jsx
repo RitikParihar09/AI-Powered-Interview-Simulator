@@ -1,7 +1,5 @@
-
-// --- src/components/ResumeDropzone.jsx ---
 import React, { useState, useCallback } from 'react';
-import { UploadCloudIcon, FileIcon } from './Icons';
+import { UploadCloudIcon, FileIcon } from '../../../components/common/Icons';
 
 const ResumeDropzone = ({ onFileChange }) => {
     const [isDragging, setIsDragging] = useState(false);
@@ -13,7 +11,7 @@ const ResumeDropzone = ({ onFileChange }) => {
         e.stopPropagation();
         setIsDragging(isEntering);
     };
-    
+
     const handleDrop = useCallback((e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -37,7 +35,9 @@ const ResumeDropzone = ({ onFileChange }) => {
     return (
         <div
             className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 h-full
-                ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
+                ${isDragging
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 shadow-xl scale-[1.02]'
+                    : 'border-slate-400 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-slate-600 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-md'}`}
             onDragEnter={(e) => handleDragEvents(e, true)}
             onDragLeave={(e) => handleDragEvents(e, false)}
             onDragOver={(e) => e.preventDefault()}
@@ -51,16 +51,16 @@ const ResumeDropzone = ({ onFileChange }) => {
             {fileName ? (
                 <div className="text-center">
                     <FileIcon className="w-10 h-10 mx-auto text-green-500 mb-2" />
-                    <p className="text-sm font-medium text-gray-800">{fileName}</p>
-                    <p className="text-xs text-gray-500 mt-1">Click to change file</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{fileName}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Click to change file</p>
                 </div>
             ) : (
                 <div className="text-center">
-                    <UploadCloudIcon className="w-10 h-10 mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm font-medium text-gray-600">
-                        <span className="text-blue-600 font-semibold">Click to upload</span>
+                    <UploadCloudIcon className="w-10 h-10 mx-auto text-gray-400 dark:text-gray-500 mb-2" />
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                        <span className="text-blue-600 dark:text-blue-400 font-semibold">Click to upload</span>
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">PDF, DOC, DOCX</p>
                 </div>
             )}
         </div>
@@ -68,4 +68,3 @@ const ResumeDropzone = ({ onFileChange }) => {
 };
 
 export default ResumeDropzone;
-

@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Printer, ChevronDown, ChevronUp, Award, AlertCircle, CheckCircle, Loader2, FileText, RefreshCw } from 'lucide-react';
 // 👇 1. NEW IMPORTS FOR FIREBASE
-import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../firebase/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // -----------------------------------------------------------
-// 🔴 YOUR OPENROUTER API KEY (MOVE TO .env LATER)
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 // -----------------------------------------------------------
 
 // --- CONFIDENCE METER ---
@@ -84,89 +83,132 @@ const InterviewReport = ({ conversationHistory, interviewData, onRestart }) => {
             }
 
             const transcript = buildTranscript();
+            console.log("📊 Generating interview report...");
+            console.log("📝 Transcript length:", transcript.length, "characters");
 
             try {
                 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "http://localhost:5173",
+                        "X-Title": "Interview Buddy - Report Generator"
                     },
                     body: JSON.stringify({
                         model: "google/gemini-2.0-flash-001",
                         messages: [
                             {
                                 role: "system",
-                                content: `
-You are an experienced but fair technical interview panelist.
+                                content: `You are an expert technical interview evaluator with 10+ years of experience assessing candidates.
 
-Your job:
-1. Extract every question asked by the Interviewer.
-2. Pair each question with the next Candidate answer.
-3. Grade realistically on 0–10 with partial credit.
-4. Produce a clean, structured, and human-like interview report.
+YOUR ROLE:
+- Analyze interview transcripts objectively and fairly
+- Provide constructive, actionable feedback
+- Score realistically based on actual performance
+- Help candidates improve their interview skills
 
-SCORING:
-- No answer / [NO SPEECH DETECTED] / "I don't know" → 0–2
-- Poor / very weak → 3–4
-- Partial but acceptable → 5–6
-- Good answer → 7–8
-- Excellent → 9–10
+ANALYSIS PROCESS:
+1. Read the entire interview transcript carefully
+2. Identify each question-answer pair
+3. Evaluate each answer based on:
+   - Technical accuracy
+   - Clarity of communication
+   - Depth of knowledge
+   - Problem-solving approach
+   - Relevance to the question
+4. Assign fair scores (0-10 scale)
+5. Provide specific, helpful feedback for each answer
+6. Identify overall strengths and weaknesses
+7. Suggest concrete improvement areas
 
-FAIRNESS:
-- Do not be unnecessarily harsh.
-- If the answer is mostly correct, do NOT score below 5.
-- Only silence or totally wrong answers should be 0–2.
+SCORING GUIDELINES (0-10 scale):
+- 0-2: No answer, silence, "[NO SPEECH DETECTED]", or completely wrong
+- 3-4: Poor answer with major gaps or misunderstandings
+- 5-6: Acceptable answer with some correct points but missing depth
+- 7-8: Good answer demonstrating solid understanding
+- 9-10: Excellent answer showing deep expertise and clear communication
 
-OUTPUT:
-ONLY return valid JSON. No markdown. No backticks.
-                                `
+IMPORTANT RULES:
+- Be FAIR and REALISTIC - don't be unnecessarily harsh
+- If an answer shows effort and partial understanding, score at least 5
+- Only give 0-2 for silence, no response, or completely incorrect answers
+- Provide SPECIFIC feedback - reference what they said and how to improve
+- Categories should include: Technical Knowledge, Communication, Problem Solving
+- Overall score should be the weighted average of all question scores
+- Summary should be 3-5 sentences highlighting key performance aspects
+
+OUTPUT FORMAT:
+Return ONLY valid JSON. No markdown, no code blocks, no backticks.`
                             },
                             {
                                 role: "user",
-                                content: `
-TRANSCRIPT:
+                                content: `INTERVIEW TRANSCRIPT:
 ${transcript}
 
 TASK:
-Generate JSON using this schema:
+Analyze this interview transcript and generate a comprehensive evaluation report.
+
+Generate JSON with this EXACT schema:
 
 {
-  "overall_score": number,
-  "summary": string,
-  "categories": [{"label": string, "score": number, "note": string}],
-  "strengths": [string],
-  "weaknesses": [string],
-  "questions_analysis": [
-    {"question": string, "answer": string, "feedback": string, "score": number}
+  "overall_score": number (0-10, weighted average of all questions),
+  "summary": string (3-5 sentences about overall performance),
+  "categories": [
+    {
+      "label": string (e.g., "Technical Knowledge", "Communication", "Problem Solving"),
+      "score": number (0-10),
+      "note": string (brief explanation of this category score)
+    }
   ],
-  "recommendations": [string]
+  "strengths": [string] (3-5 specific strengths with examples),
+  "weaknesses": [string] (3-5 areas for improvement with specifics),
+  "questions_analysis": [
+    {
+      "question": string (exact question asked by interviewer),
+      "answer": string (candidate's answer - use "[NO SPEECH DETECTED]" if silent),
+      "feedback": string (specific, constructive feedback on this answer),
+      "score": number (0-10 based on scoring guidelines above)
+    }
+  ],
+  "recommendations": [string] (5-7 actionable next steps for improvement)
 }
 
-Special notes:
-- Treat "[NO SPEECH DETECTED]" as silence = 0–2.
-- Give fair and slightly generous scoring overall.
-- Summary = 2–5 sentences, realistic.
-                                `
+CRITICAL REQUIREMENTS:
+- Treat "[NO SPEECH DETECTED]" as silence/no answer = score 0-2
+- Be fair and slightly generous in scoring
+- Provide SPECIFIC feedback that references what the candidate actually said
+- Make recommendations actionable and concrete
+- Ensure overall_score matches the average of question scores
+- Include at least 3 categories (Technical Knowledge, Communication, Problem Solving)
+
+Generate the report now.`
                             }
                         ]
                     })
                 });
 
                 const result = await response.json();
-                if (result.error) throw new Error(result.error.message);
+                console.log("📥 Received response from LLM");
+
+                if (result.error) {
+                    console.error("🚨 OpenRouter Error:", result.error.message);
+                    throw new Error(result.error.message);
+                }
 
                 let rawContent = result.choices[0].message.content
                     .replace(/```json/g, "")
                     .replace(/```/g, "")
                     .trim();
 
+                console.log("📋 Parsing report data...");
                 const data = JSON.parse(rawContent);
+                console.log("✅ Report generated successfully. Overall score:", data.overall_score);
                 setReportData(data);
 
             } catch (error) {
-                console.error("OpenRouter Report Error:", error);
-                setReportData(getFallbackData());
+                console.error("🚨 Report Generation Error:", error);
+                setReportData(getFallbackData(transcript));
             } finally {
                 setIsLoading(false);
             }
