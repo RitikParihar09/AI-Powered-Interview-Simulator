@@ -9,28 +9,32 @@ const PredefinedInterviews = ({ onStart }) => {
             company: 'General',
             topics: ['SQL', 'Normalization', 'ACID Properties', 'Indexing'],
             duration: '10 mins',
-            difficulty: 'Medium'
+            difficulty: 'Medium',
+            useQuestionBank: true
         },
         {
             role: 'Operating Systems',
             company: 'Microsoft',
             topics: ['Process Mgmt', 'Deadlocks', 'Semaphores', 'Memory'],
             duration: '10 mins',
-            difficulty: 'Hard'
+            difficulty: 'Hard',
+            useQuestionBank: true
         },
         {
             role: 'Computer Networks',
             company: 'Cisco',
             topics: ['OSI Model', 'TCP/IP', 'HTTP/HTTPS', 'DNS'],
             duration: '10 mins',
-            difficulty: 'Medium'
+            difficulty: 'Medium',
+            useQuestionBank: true
         },
         {
             role: 'SDE - DSA Round',
             company: 'Amazon',
             topics: ['Arrays', 'Linked Lists', 'Trees', 'Dynamic Programming'],
             duration: '15 mins',
-            difficulty: 'Hard'
+            difficulty: 'Hard',
+            useQuestionBank: true
         },
 
         // --- BEHAVIORAL ---
@@ -39,7 +43,8 @@ const PredefinedInterviews = ({ onStart }) => {
             company: 'Any Company',
             topics: ['Strengths', 'Weaknesses', 'Teamwork', 'Leadership'],
             duration: '10 mins',
-            difficulty: 'Easy'
+            difficulty: 'Easy',
+            useQuestionBank: false
         },
 
         // --- TECH ROLES ---
@@ -48,35 +53,40 @@ const PredefinedInterviews = ({ onStart }) => {
             company: 'Oracle',
             topics: ['Java Core', 'OOPs', 'Multithreading', 'Spring'],
             duration: '10 mins',
-            difficulty: 'Hard'
+            difficulty: 'Hard',
+            useQuestionBank: true
         },
         {
             role: 'Machine Learning Intern',
             company: 'NVIDIA',
             topics: ['Machine Learning', 'Python', 'TensorFlow'],
             duration: '10 mins',
-            difficulty: 'Medium'
+            difficulty: 'Medium',
+            useQuestionBank: true
         },
         {
             role: 'Frontend Developer',
             company: 'Vercel',
             topics: ['React', 'JavaScript', 'UI/UX'],
             duration: '7 mins',
-            difficulty: 'Easy'
+            difficulty: 'Easy',
+            useQuestionBank: true
         },
         {
             role: 'Backend Engineer',
             company: 'Stripe',
             topics: ['System Design', 'Databases', 'APIs'],
             duration: '12 mins',
-            difficulty: 'Hard'
+            difficulty: 'Hard',
+            useQuestionBank: true
         },
         {
             role: 'Java',
             company: 'Testing',
             topics: ['Java', 'oops'],
             duration: '1 mins',
-            difficulty: 'Easy'
+            difficulty: 'Easy',
+            useQuestionBank: true
         },
         // --- NEW PRESETS ---
         {
@@ -84,35 +94,40 @@ const PredefinedInterviews = ({ onStart }) => {
             company: 'Netflix',
             topics: ['Python', 'Django', 'FastAPI', 'Scripting'],
             duration: '12 mins',
-            difficulty: 'Medium'
+            difficulty: 'Medium',
+            useQuestionBank: true
         },
         {
             role: 'React Native Dev',
             company: 'Uber',
             topics: ['Mobile Dev', 'React Native', 'Redux', 'Native Modules'],
             duration: '15 mins',
-            difficulty: 'Medium'
+            difficulty: 'Medium',
+            useQuestionBank: true
         },
         {
             role: 'DevOps Engineer',
             company: 'AWS',
             topics: ['CI/CD', 'Docker', 'Kubernetes', 'Terraform'],
             duration: '15 mins',
-            difficulty: 'Hard'
+            difficulty: 'Hard',
+            useQuestionBank: true
         },
         {
             role: 'Cyber Security',
             company: 'CrowdStrike',
             topics: ['Network Security', 'Ethical Hacking', 'OWASP', 'Cryptography'],
             duration: '15 mins',
-            difficulty: 'Hard'
+            difficulty: 'Hard',
+            useQuestionBank: true
         },
         {
             role: 'Product Manager',
             company: 'Spotify',
             topics: ['Product Strategy', 'User Research', 'Agile', 'Roadmapping'],
             duration: '20 mins',
-            difficulty: 'Medium'
+            difficulty: 'Medium',
+            useQuestionBank: false
         },
     ];
 

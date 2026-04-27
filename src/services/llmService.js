@@ -1,6 +1,8 @@
 /* src/services/llmService.js */
 
 import * as pdfjsLib from 'pdfjs-dist';
+import { db } from '../firebase/firebase';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 
 // Configure PDF.js worker - use local package instead of CDN
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -97,6 +99,42 @@ const callOpenRouter = async (messages) => {
   } catch (error) {
     console.error("🚨 Network Error:", error);
     return null;
+  }
+};
+
+/**
+ * HELPER: Fetch questions from question bank (Firestore)
+ * Filters by company, role, and difficulty level
+ */
+export const getQuestionBankQuestions = async (company, role, difficulty) => {
+  try {
+    if (!company || !role) {
+      console.warn("⚠️ Company or role missing. Skipping question bank fetch.");
+      return [];
+    }
+
+    const questionsRef = collection(db, 'questions');
+    
+    // Build query with filters
+    const q = query(
+      questionsRef,
+      where('company', '==', company),
+      where('role', '==', role),
+      where('difficulty', '==', difficulty),
+      orderBy('createdAt', 'desc')
+    );
+
+    const snapshot = await getDocs(q);
+    const questions = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    console.log(`✅ Fetched ${questions.length} questions from bank for ${company} - ${role} (${difficulty})`);
+    return questions;
+  } catch (error) {
+    console.error("🚨 Question bank fetch error:", error);
+    return [];
   }
 };
 

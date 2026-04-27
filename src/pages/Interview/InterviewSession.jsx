@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Mic, MicOff, PhoneOff, Video, VideoOff, Send, Keyboard, Loader2, Play, Clock, Briefcase, User, Sparkles, Sun, Moon } from 'lucide-react';
-import { getInitialQuestion, getNextQuestion, parseResumeText } from '../../services/llmService';
+import { getInitialQuestion, getNextQuestion, parseResumeText, getQuestionBankQuestions } from '../../services/llmService';
 import aiImg from '../../assets/ai.png';
 import Timer from './components/Timer';
 import AIOrb from './components/AIOrb';
@@ -19,6 +19,10 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [history, setHistory] = useState([]);
     const [isFinished, setIsFinished] = useState(false);
+
+    // Question Bank State
+    const [questionBankQuestions, setQuestionBankQuestions] = useState([]);
+    const [questionBankIndex, setQuestionBankIndex] = useState(0);
 
     // UI/Device State
     const [isVideoOn, setIsVideoOn] = useState(true);
@@ -301,6 +305,23 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
             setResumeText(parsedResumeText);
         }
 
+        // Fetch question bank questions if enabled
+        if (interviewData?.useQuestionBank) {
+            console.log("🏦 Fetching question bank questions...");
+            const bankQuestions = await getQuestionBankQuestions(
+                interviewData?.company,
+                interviewData?.role,
+                interviewData?.difficulty || "Medium"
+            );
+            if (bankQuestions.length > 0) {
+                setQuestionBankQuestions(bankQuestions);
+                setQuestionBankIndex(0);
+                console.log(`✅ Loaded ${bankQuestions.length} questions from question bank`);
+            } else {
+                console.log("⚠️ No questions found in bank. Will use AI generation.");
+            }
+        }
+
         try {
             const q = await getInitialQuestion(
                 interviewData?.role || "Developer", 
@@ -335,19 +356,38 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
             return;
         }
 
-        try {
-            const nextQ = await getNextQuestion({
-                lastQuestion: currentQuestion,
-                lastAnswer: answer,
-                history: updatedHistory,
-                resumeText: resumeText,
-                difficulty: interviewData?.difficulty || "Medium"
-            });
-            if (isEndedRef.current) return;
-            setCurrentQuestion(nextQ);
-            setHistory(prev => [...prev, { role: "model", parts: [{ text: nextQ }] }]);
-            speak(nextQ);
-        } catch (e) { if (!isEndedRef.current) setStatus("Error fetching question."); }
+        let nextQ = null;
+
+        // TRY TO USE QUESTION BANK QUESTIONS FIRST
+        if (interviewData?.useQuestionBank && questionBankIndex < questionBankQuestions.length) {
+            const currentBankQuestion = questionBankQuestions[questionBankIndex];
+            nextQ = currentBankQuestion.question || currentBankQuestion.text;
+            setQuestionBankIndex(prev => prev + 1);
+            console.log(`📋 Using question bank question ${questionBankIndex + 1}/${questionBankQuestions.length}`);
+        } else if (questionBankIndex >= questionBankQuestions.length && questionBankQuestions.length > 0) {
+            console.log("✅ Question bank exhausted. Switching to AI-generated questions.");
+        }
+
+        // FALLBACK TO AI IF NO BANK QUESTIONS OR EXHAUSTED
+        if (!nextQ) {
+            try {
+                nextQ = await getNextQuestion({
+                    lastQuestion: currentQuestion,
+                    lastAnswer: answer,
+                    history: updatedHistory,
+                    resumeText: resumeText,
+                    difficulty: interviewData?.difficulty || "Medium"
+                });
+            } catch (e) {
+                if (!isEndedRef.current) setStatus("Error fetching question.");
+                return;
+            }
+        }
+
+        if (isEndedRef.current) return;
+        setCurrentQuestion(nextQ);
+        setHistory(prev => [...prev, { role: "model", parts: [{ text: nextQ }] }]);
+        speak(nextQ);
     };
 
     // ==========================================
