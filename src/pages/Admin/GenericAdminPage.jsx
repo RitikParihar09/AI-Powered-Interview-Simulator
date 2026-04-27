@@ -98,8 +98,10 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
     };
 
     const handleEditSection = (itemName) => {
-        navigate(`/admin-panel/questions?search=${encodeURIComponent(itemName)}`);
+        const paramKey = fieldName === 'role' ? 'role' : fieldName === 'company' ? 'company' : 'tag';
+        navigate(`/admin-panel/questions?${paramKey}=${encodeURIComponent(itemName)}`);
     };
+
 
     useEffect(() => {
         setLoading(true);
@@ -269,15 +271,19 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
                             ) : (
                                 filteredItems.map((item, i) => (
                                     <div key={i} className="bg-[#020617] border border-slate-800/50 p-6 rounded-2xl flex items-center justify-between group hover:border-indigo-500/30 transition-all relative">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center">
-                                                <Icon className="w-6 h-6 text-indigo-400" />
+                                        <div 
+                                            className="flex items-center gap-4 cursor-pointer flex-1"
+                                            onClick={() => handleEditSection(item.name)}
+                                        >
+                                            <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                                <Icon className="w-6 h-6 text-indigo-400 group-hover:text-white" />
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-white group-hover:text-indigo-400 transition-colors">{item.name}</h4>
-                                                <p className="text-xs text-slate-500 font-medium">{item.count} Questions</p>
+                                                <p className="text-xs text-slate-500 font-medium group-hover:text-slate-400 transition-colors">{item.count} Questions</p>
                                             </div>
                                         </div>
+
 
                                         <div className="relative">
                                             <button 

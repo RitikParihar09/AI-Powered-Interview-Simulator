@@ -11,13 +11,20 @@ import {
 import { db } from '../../firebase/firebase';
 import AdminLayout from './AdminLayout';
 
+import { useSearchParams } from 'react-router-dom';
+
 const QuestionBank = () => {
+    const [searchParams] = useSearchParams();
+    const initialRole = searchParams.get('role') || 'All Roles';
+    const initialCompany = searchParams.get('company') || 'All Companies';
+    const initialTag = searchParams.get('tag') || '';
+
 
 
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+
     const [addMode, setAddMode] = useState('form'); // 'form' or 'json'
     const [jsonInput, setJsonInput] = useState('');
     const [isEditing, setIsEditing] = useState(null);
@@ -248,9 +255,11 @@ const QuestionBank = () => {
         setFormData({ ...formData, tags: formData.tags.filter(t => t !== tagToRemove) });
     };
 
-    const [roleFilter, setRoleFilter] = useState('All Roles');
-    const [companyFilter, setCompanyFilter] = useState('All Companies');
+    const [roleFilter, setRoleFilter] = useState(initialRole);
+    const [companyFilter, setCompanyFilter] = useState(initialCompany);
     const [difficultyFilter, setDifficultyFilter] = useState('All Difficulties');
+    const [searchQuery, setSearchQuery] = useState(initialTag);
+
 
     const filteredQuestions = questions.filter(q => {
         // 1. Search Query Logic (Search in Question, Role, Company, Difficulty, and Tags)
