@@ -7,6 +7,39 @@ import InterviewReport from '../pages/Report/InterviewReport';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import Home from '../pages/Home/Home';
+import QuestionBank from '../pages/Admin/QuestionBank';
+import AdminDashboard from '../pages/Admin/Dashboard';
+import Categories from '../pages/Admin/Categories';
+import Companies from '../pages/Admin/Companies';
+import { Roles, Tags } from '../pages/Admin/RolesAndTags';
+import Settings from '../pages/Admin/Settings';
+import { useAuth } from '../context/AuthContext';
+
+const AdminRoute = ({ children }) => {
+    const { currentUser, loading } = useAuth();
+    
+    if (loading) return <LoadingScreen />;
+
+    const isAdmin = currentUser && currentUser.email === 'ritikparihar2040@gmail.com';
+
+    if (!currentUser) {
+        return <Navigate to="/" />;
+    }
+
+    if (!isAdmin) {
+        return (
+            <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 text-center">
+                <div className="space-y-4">
+                    <h1 className="text-4xl font-black text-white">Access Denied</h1>
+                    <p className="text-slate-400">This page is restricted to admin users only. (Logged in as: {currentUser.email})</p>
+                    <Link to="/" className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold">Go Back Home</Link>
+                </div>
+            </div>
+        );
+    }
+    
+    return children;
+};
 
 const SessionExpired = () => (
     <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center p-6">
@@ -81,6 +114,44 @@ const AppRoutes = ({
             
             <Route path="/dashboard" element={
                 <Dashboard onBack={handleRestart} />
+            } />
+
+            {/* ADMIN-PANEL ROUTES */}
+            <Route path="/admin-panel" element={<Navigate to="/admin-panel/dashboard" replace />} />
+            <Route path="/admin-panel/dashboard" element={
+                <AdminRoute>
+                    <AdminDashboard />
+                </AdminRoute>
+            } />
+            <Route path="/admin-panel/questions" element={
+                <AdminRoute>
+                    <QuestionBank />
+                </AdminRoute>
+            } />
+            <Route path="/admin-panel/categories" element={
+                <AdminRoute>
+                    <Categories />
+                </AdminRoute>
+            } />
+            <Route path="/admin-panel/companies" element={
+                <AdminRoute>
+                    <Companies />
+                </AdminRoute>
+            } />
+            <Route path="/admin-panel/roles" element={
+                <AdminRoute>
+                    <Roles />
+                </AdminRoute>
+            } />
+            <Route path="/admin-panel/tags" element={
+                <AdminRoute>
+                    <Tags />
+                </AdminRoute>
+            } />
+            <Route path="/admin-panel/settings" element={
+                <AdminRoute>
+                    <Settings />
+                </AdminRoute>
             } />
 
             {/* Fallback */}
