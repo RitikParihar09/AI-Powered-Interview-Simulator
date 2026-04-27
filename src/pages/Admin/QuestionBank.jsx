@@ -233,14 +233,33 @@ const QuestionBank = () => {
         setFormData({ ...formData, tags: formData.tags.filter(t => t !== tagToRemove) });
     };
 
-    const filteredQuestions = questions.filter(q => 
-        q.question.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const [roleFilter, setRoleFilter] = useState('All Roles');
+    const [companyFilter, setCompanyFilter] = useState('All Companies');
+    const [difficultyFilter, setDifficultyFilter] = useState('All Difficulties');
+
+    const filteredQuestions = questions.filter(q => {
+        // 1. Search Query Logic (Search in Question, Role, Company, Difficulty, and Tags)
+        const query = searchQuery.toLowerCase().trim();
+        const matchesSearch = 
+            q.question.toLowerCase().includes(query) ||
+            q.role.toLowerCase().includes(query) ||
+            q.company.toLowerCase().includes(query) ||
+            q.difficulty.toLowerCase().includes(query) ||
+            (q.tags && q.tags.some(tag => tag.toLowerCase().includes(query)));
+
+        // 2. Filter Dropdown Logic
+        const matchesRole = roleFilter === 'All Roles' || q.role === roleFilter;
+        const matchesCompany = companyFilter === 'All Companies' || q.company === companyFilter;
+        const matchesDifficulty = difficultyFilter === 'All Difficulties' || q.difficulty === difficultyFilter;
+
+        return matchesSearch && matchesRole && matchesCompany && matchesDifficulty;
+    });
 
     const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = Math.min(startIndex + itemsPerPage, filteredQuestions.length);
     const paginatedQuestions = filteredQuestions.slice(startIndex, endIndex);
+
 
     return (
         <AdminLayout>
@@ -520,27 +539,35 @@ const QuestionBank = () => {
                             </div>
 
                             {/* FILTERS */}
-                            <select className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer">
+                            <select 
+                                value={roleFilter}
+                                onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+                                className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
+                            >
                                 <option>All Roles</option>
-                                <option>Frontend</option>
-                                <option>Backend</option>
-                                <option>Fullstack</option>
+                                {masterLists.roles.map(role => <option key={role} value={role}>{role}</option>)}
                             </select>
                             
-                            <select className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer">
+                            <select 
+                                value={companyFilter}
+                                onChange={(e) => { setCompanyFilter(e.target.value); setCurrentPage(1); }}
+                                className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
+                            >
                                 <option>All Companies</option>
-                                <option>TCS</option>
-                                <option>Infosys</option>
-                                <option>Accenture</option>
-                                <option>Google</option>
+                                {masterLists.companies.map(company => <option key={company} value={company}>{company}</option>)}
                             </select>
-
-                            <select className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer">
+ 
+                            <select 
+                                value={difficultyFilter}
+                                onChange={(e) => { setDifficultyFilter(e.target.value); setCurrentPage(1); }}
+                                className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
+                            >
                                 <option>All Difficulties</option>
                                 <option>Easy</option>
                                 <option>Medium</option>
                                 <option>Hard</option>
                             </select>
+
                         </div>
                     </div>
 
