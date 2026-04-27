@@ -250,6 +250,7 @@ Generate the report now.`
             if (reportData && currentUser && !savedToDb) {
                 try {
                     await addDoc(collection(db, "users", currentUser.uid, "interviews"), {
+                        userEmail: currentUser.email, // Save email for admin tracking
                         role: interviewData?.role || "General",
                         date: serverTimestamp(),
                         score: reportData.overall_score,
@@ -264,6 +265,7 @@ Generate the report now.`
         };
         saveToHistory();
     }, [reportData, currentUser]);
+
 
 
     // --------------------

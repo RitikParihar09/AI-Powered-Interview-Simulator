@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import InterviewSession from '../pages/Interview/InterviewSession';
@@ -16,30 +16,18 @@ import Settings from '../pages/Admin/Settings';
 import { useAuth } from '../context/AuthContext';
 
 const AdminRoute = ({ children }) => {
-    const { currentUser, loading } = useAuth();
+    const { isAdmin, loading } = useAuth();
     
     if (loading) return <LoadingScreen />;
 
-    const isAdmin = currentUser && currentUser.email === 'ritikparihar2040@gmail.com';
-
-    if (!currentUser) {
-        return <Navigate to="/" />;
-    }
-
     if (!isAdmin) {
-        return (
-            <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 text-center">
-                <div className="space-y-4">
-                    <h1 className="text-4xl font-black text-white">Access Denied</h1>
-                    <p className="text-slate-400">This page is restricted to admin users only. (Logged in as: {currentUser.email})</p>
-                    <Link to="/" className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold">Go Back Home</Link>
-                </div>
-            </div>
-        );
+        return <Navigate to="/" />;
     }
     
     return children;
 };
+
+
 
 const SessionExpired = () => (
     <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center p-6">

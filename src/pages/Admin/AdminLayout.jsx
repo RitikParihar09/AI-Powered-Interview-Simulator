@@ -17,22 +17,21 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminLayout = ({ children }) => {
-    const { currentUser, logout } = useAuth();
+    const { isAdmin, logout, currentUser, loading } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-
-    // ADMIN GATE: Only allow authorized email from .env
-    const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
     
     React.useEffect(() => {
-        if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+        if (!loading && !isAdmin) {
             navigate('/');
         }
-    }, [currentUser, navigate]);
+    }, [isAdmin, loading, navigate]);
 
-    if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
-        return null; // Don't even render the sidebar if unauthorized
+    if (loading || !isAdmin) {
+        return null; // Wait for loading or block if not admin
     }
+
+
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/admin-panel/dashboard' },
