@@ -12,6 +12,8 @@ import { db } from '../../firebase/firebase';
 import AdminLayout from './AdminLayout';
 
 const QuestionBank = () => {
+
+
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
@@ -202,6 +204,19 @@ const QuestionBank = () => {
         return () => { unsubRoles(); unsubCompanies(); unsubTags(); };
     }, []);
 
+    // Derive filter options from the questions themselves to ensure they are always populated
+    const roleOptions = Array.from(new Set([
+        ...masterLists.roles,
+        ...questions.map(q => q.role)
+    ].filter(Boolean))).sort();
+
+    const companyOptions = Array.from(new Set([
+        ...masterLists.companies,
+        ...questions.map(q => q.company)
+    ].filter(Boolean))).sort();
+
+
+
     const [hintInput, setHintInput] = useState('');
     const [tagInput, setTagInput] = useState('');
 
@@ -328,6 +343,8 @@ const QuestionBank = () => {
                     </button>
                 </div>
 
+
+
                 {/* ADD / EDIT FORM */}
                 {isAdding && (
                     <div className="bg-[#0b1121] border border-slate-800/50 rounded-3xl p-8 shadow-2xl animate-in slide-in-from-top-4 duration-500">
@@ -394,7 +411,7 @@ const QuestionBank = () => {
                                             className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 transition-all outline-none"
                                         />
                                         <datalist id="role-options">
-                                            {masterLists.roles.map(r => <option key={r} value={r} />)}
+                                            {roleOptions.map(r => <option key={r} value={r} />)}
                                         </datalist>
                                     </div>
                                     <div className="space-y-2">
@@ -408,9 +425,10 @@ const QuestionBank = () => {
                                             className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 transition-all outline-none"
                                         />
                                         <datalist id="company-options">
-                                            {masterLists.companies.map(c => <option key={c} value={c} />)}
+                                            {companyOptions.map(c => <option key={c} value={c} />)}
                                         </datalist>
                                     </div>
+
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Difficulty *</label>
                                         <select 
@@ -545,7 +563,7 @@ const QuestionBank = () => {
                                 className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
                             >
                                 <option>All Roles</option>
-                                {masterLists.roles.map(role => <option key={role} value={role}>{role}</option>)}
+                                {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
                             </select>
                             
                             <select 
@@ -554,8 +572,9 @@ const QuestionBank = () => {
                                 className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
                             >
                                 <option>All Companies</option>
-                                {masterLists.companies.map(company => <option key={company} value={company}>{company}</option>)}
+                                {companyOptions.map(company => <option key={company} value={company}>{company}</option>)}
                             </select>
+
  
                             <select 
                                 value={difficultyFilter}

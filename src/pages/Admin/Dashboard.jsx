@@ -13,7 +13,65 @@ import {
     TrendingUp
 } from 'lucide-react';
 
+const DifficultyPieChart = ({ questions }) => {
+    const [hovered, setHovered] = React.useState(null);
+
+    const counts = {
+        Easy: questions.filter(q => q.difficulty === 'Easy').length,
+        Medium: questions.filter(q => q.difficulty === 'Medium').length,
+        Hard: questions.filter(q => q.difficulty === 'Hard').length,
+        Total: questions.length
+    };
+
+    const radius = 40;
+    const strokeWidth = 10;
+    const circumference = 2 * Math.PI * radius;
+
+    const getData = () => {
+        const data = [];
+        let offset = 0;
+        ['Easy', 'Medium', 'Hard'].forEach(level => {
+            const percentage = counts.Total > 0 ? (counts[level] / counts.Total) : 0;
+            const length = percentage * circumference;
+            data.push({
+                level,
+                length,
+                offset: circumference - offset,
+                color: level === 'Easy' ? '#10b981' : level === 'Medium' ? '#f59e0b' : '#f43f5e'
+            });
+            offset += length;
+        });
+        return data;
+    };
+
+    return (
+        <div className="relative w-44 h-44 flex items-center justify-center">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r={radius} fill="transparent" stroke="#1e293b" strokeWidth={strokeWidth} />
+                {getData().map((slice, i) => (
+                    <circle
+                        key={i} cx="50" cy="50" r={radius}
+                        fill="transparent" stroke={slice.color} strokeWidth={strokeWidth}
+                        strokeDasharray={`${slice.length} ${circumference}`}
+                        strokeDashoffset={slice.offset}
+                        strokeLinecap="round"
+                        className="transition-all duration-500 cursor-pointer"
+                        style={{ opacity: hovered && hovered !== slice.level ? 0.3 : 1 }}
+                        onMouseEnter={() => setHovered(slice.level)}
+                        onMouseLeave={() => setHovered(null)}
+                    />
+                ))}
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-4xl font-black text-white">{hovered ? counts[hovered] : counts.Total}</span>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{hovered ? hovered : 'Questions'}</span>
+            </div>
+        </div>
+    );
+};
+
 const AdminDashboard = () => {
+
     const [stats, setStats] = React.useState({
         questions: 0,
         companies: 0,
@@ -22,6 +80,7 @@ const AdminDashboard = () => {
         users: 0,
         interviews: 0
     });
+    const [questions, setQuestions] = React.useState([]);
     const [recentInterviews, setRecentInterviews] = React.useState([]);
 
     React.useEffect(() => {
@@ -29,7 +88,10 @@ const AdminDashboard = () => {
         const qQuestions = query(collection(db, 'questions'));
         const unsubQuestions = onSnapshot(qQuestions, (snapshot) => {
             const allQuestions = snapshot.docs.map(doc => doc.data());
+            setQuestions(allQuestions);
+            
             const uniqueCompanies = new Set(allQuestions.map(q => q.company)).size;
+
             const uniqueRoles = new Set(allQuestions.map(q => q.role)).size;
             const allTags = allQuestions.flatMap(q => q.tags || []);
             const uniqueTags = new Set(allTags).size;
@@ -87,11 +149,11 @@ const AdminDashboard = () => {
     const statCards = [
         { label: 'Total Users', value: stats.users.toString(), icon: Users, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
         { label: 'Total Interviews', value: stats.interviews.toString(), icon: MessageSquare, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-        { label: 'Total Questions', value: stats.questions.toString(), icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-500/10' },
         { label: 'Total Companies', value: stats.companies.toString(), icon: Building2, color: 'text-purple-500', bg: 'bg-purple-500/10' },
         { label: 'Total Roles', value: stats.roles.toString(), icon: UserCircle, color: 'text-amber-500', bg: 'bg-amber-500/10' },
         { label: 'Total Tags', value: stats.tags.toString(), icon: Tag, color: 'text-rose-500', bg: 'bg-rose-500/10' },
     ];
+
 
     return (
         <AdminLayout>
@@ -123,93 +185,132 @@ const AdminDashboard = () => {
                     ))}
                 </div>
 
-                {/* RECENT ACTIVITY SECTION */}
-                <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-500/10 rounded-lg">
-                                <TrendingUp className="w-5 h-5 text-indigo-400" />
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-12">
+                    {/* RECENT ACTIVITY SECTION (Left 2/3) */}
+                    <div className="xl:col-span-2 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-500/10 rounded-lg">
+                                    <TrendingUp className="w-5 h-5 text-indigo-400" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white tracking-tight">Recent Activity</h3>
                             </div>
-                            <h3 className="text-2xl font-bold text-white tracking-tight">Recent Activity</h3>
+                            <button className="text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/5 px-4 py-2 rounded-xl">View All</button>
                         </div>
-                        <button className="text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/5 px-4 py-2 rounded-xl">View All</button>
-                    </div>
 
-                    <div className="bg-[#0b1121] border border-slate-800/50 rounded-[40px] overflow-hidden shadow-2xl">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="border-b border-slate-800/50 bg-slate-800/20">
-                                        <th className="px-8 py-5 text-xs font-black text-slate-500 uppercase tracking-widest">Candidate</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-500 uppercase tracking-widest">Job Role</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Score</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800/30">
-                                    {recentInterviews.length > 0 ? (
-                                        recentInterviews.map((interview) => (
-                                            <tr key={interview.id} className="hover:bg-slate-800/20 transition-colors group">
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white font-bold shadow-sm">
-                                                            {interview.userEmail?.[0].toUpperCase() || 'U'}
+                        <div className="bg-[#0b1121] border border-slate-800/50 rounded-[40px] overflow-hidden shadow-2xl">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="border-b border-slate-800/50 bg-slate-800/20">
+                                            <th className="px-8 py-5 text-xs font-black text-slate-500 uppercase tracking-widest">Candidate</th>
+                                            <th className="px-8 py-5 text-xs font-black text-slate-500 uppercase tracking-widest">Job Role</th>
+                                            <th className="px-8 py-5 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Score</th>
+                                            <th className="px-8 py-5 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-800/30">
+                                        {recentInterviews.length > 0 ? (
+                                            recentInterviews.map((interview) => (
+                                                <tr key={interview.id} className="hover:bg-slate-800/20 transition-colors group">
+                                                    <td className="px-8 py-6">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white font-bold shadow-sm">
+                                                                {interview.userEmail?.[0].toUpperCase() || 'U'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-white group-hover:text-indigo-400 transition-colors">
+                                                                    {interview.userEmail || 'Anonymous User'}
+                                                                </p>
+                                                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-tighter">Verified User</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="font-bold text-white group-hover:text-indigo-400 transition-colors">
-                                                                {interview.userEmail || 'Anonymous User'}
-                                                            </p>
-                                                            <p className="text-[10px] text-slate-500 uppercase font-black tracking-tighter">Verified User</p>
+                                                    </td>
+                                                    <td className="px-8 py-6">
+                                                        <span className="px-4 py-2 bg-slate-800/50 rounded-xl text-xs font-bold text-slate-300 border border-slate-700/50">
+                                                            {interview.role}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-center">
+                                                        <span className={`text-xl font-black ${
+                                                            interview.score >= 7 ? 'text-emerald-500' : 
+                                                            interview.score >= 4 ? 'text-amber-500' : 'text-rose-500'
+                                                        }`}>
+                                                            {interview.score}/10
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-right">
+                                                        <div className="flex flex-col items-end">
+                                                            <div className="flex items-center gap-2 text-slate-400 font-bold text-sm">
+                                                                <Calendar className="w-3.5 h-3.5" />
+                                                                {interview.date?.seconds ? new Date(interview.date.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                                            </div>
+                                                            <p className="text-[10px] text-slate-600 font-black uppercase mt-1">Completed</p>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <span className="px-4 py-2 bg-slate-800/50 rounded-xl text-xs font-bold text-slate-300 border border-slate-700/50">
-                                                        {interview.role}
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-6 text-center">
-                                                    <span className={`text-xl font-black ${
-                                                        interview.score >= 7 ? 'text-emerald-500' : 
-                                                        interview.score >= 4 ? 'text-amber-500' : 'text-rose-500'
-                                                    }`}>
-                                                        {interview.score}/10
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    <div className="flex flex-col items-end">
-                                                        <div className="flex items-center gap-2 text-slate-400 font-bold text-sm">
-                                                            <Calendar className="w-3.5 h-3.5" />
-                                                            {interview.date?.seconds ? new Date(interview.date.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="4" className="px-8 py-20 text-center">
+                                                    <div className="flex flex-col items-center gap-4">
+                                                        <div className="w-20 h-20 bg-slate-800/30 rounded-full flex items-center justify-center">
+                                                            <MessageSquare className="w-10 h-10 text-slate-600" />
                                                         </div>
-                                                        <p className="text-[10px] text-slate-600 font-black uppercase mt-1">Completed</p>
+                                                        <p className="text-slate-500 font-bold">No interviews recorded yet</p>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="4" className="px-8 py-20 text-center">
-                                                <div className="flex flex-col items-center gap-4">
-                                                    <div className="w-20 h-20 bg-slate-800/30 rounded-full flex items-center justify-center">
-                                                        <MessageSquare className="w-10 h-10 text-slate-600" />
-                                                    </div>
-                                                    <p className="text-slate-500 font-bold">No interviews recorded yet</p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* DIFFICULTY BREAKDOWN SECTION (Right 1/3) */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-500/10 rounded-lg">
+                                <BookOpen className="w-5 h-5 text-indigo-400" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white tracking-tight">Difficulty Balance</h3>
+                        </div>
+
+                        <div className="bg-[#0b1121] border border-slate-800/50 p-10 rounded-[40px] shadow-2xl relative overflow-hidden flex flex-col items-center justify-center gap-10">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[80px] -mr-16 -mt-16" />
+                            
+                            <DifficultyPieChart questions={questions} />
+
+                            <div className="grid grid-cols-1 w-full gap-4">
+                                <div className="flex items-center justify-between p-4 bg-slate-800/20 rounded-2xl border border-slate-800/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                                        <span className="text-sm font-bold text-slate-400">Easy Questions</span>
+                                    </div>
+                                    <span className="text-white font-black">{questions.filter(q => q.difficulty === 'Easy').length}</span>
+                                </div>
+                                <div className="flex items-center justify-between p-4 bg-slate-800/20 rounded-2xl border border-slate-800/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-3 h-3 rounded-full bg-amber-500" />
+                                        <span className="text-sm font-bold text-slate-400">Medium Questions</span>
+                                    </div>
+                                    <span className="text-white font-black">{questions.filter(q => q.difficulty === 'Medium').length}</span>
+                                </div>
+                                <div className="flex items-center justify-between p-4 bg-slate-800/20 rounded-2xl border border-slate-800/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-3 h-3 rounded-full bg-rose-500" />
+                                        <span className="text-sm font-bold text-slate-400">Hard Questions</span>
+                                    </div>
+                                    <span className="text-white font-black">{questions.filter(q => q.difficulty === 'Hard').length}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-
             </div>
         </AdminLayout>
     );
 };
 
 export default AdminDashboard;
-
-
