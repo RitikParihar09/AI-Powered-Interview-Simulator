@@ -10,10 +10,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import AdminLayout from './AdminLayout';
+import { useTheme } from '../../context/ThemeContext';
 
 import { useSearchParams } from 'react-router-dom';
 
 const QuestionBank = () => {
+    const { theme } = useTheme();
+
     const [searchParams] = useSearchParams();
     const initialRole = searchParams.get('role') || 'All Roles';
     const initialCompany = searchParams.get('company') || 'All Companies';
@@ -31,14 +34,15 @@ const QuestionBank = () => {
     
     // Form state
     const [formData, setFormData] = useState({
-        role: 'Frontend',
-        company: 'TCS',
+        role: '',
+        company: '',
         difficulty: 'Easy',
         question: '',
         expectedAnswer: '',
-        hints: ['hooks', 'virtual DOM'],
-        tags: ['react', 'library', 'javascript']
+        hints: [],
+        tags: []
     });
+
 
     // Custom Popup State
     const [popup, setPopup] = useState({ show: false, type: 'success', title: '', message: '', onConfirm: null });
@@ -145,14 +149,15 @@ const QuestionBank = () => {
             setIsAdding(false);
             setIsEditing(null);
             setFormData({
-                role: 'Frontend',
-                company: 'TCS',
+                role: '',
+                company: '',
                 difficulty: 'Easy',
                 question: '',
                 expectedAnswer: '',
-                hints: ['hooks', 'virtual DOM'],
-                tags: ['react', 'library', 'javascript']
+                hints: [],
+                tags: []
             });
+
         } catch (error) {
             showError("Save Failed", "Could not connect to Firestore.");
         }
@@ -291,8 +296,8 @@ const QuestionBank = () => {
                 {/* Custom Popup Modal */}
                 {popup.show && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-                        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setPopup(p => ({ ...p, show: false }))} />
-                        <div className="bg-[#0b1121] border border-slate-800 rounded-[40px] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 relative">
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setPopup(p => ({ ...p, show: false }))} />
+                        <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800' : 'bg-white border-slate-200'} border rounded-[40px] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 relative`}>
                             <div className={`w-20 h-20 rounded-3xl mb-6 mx-auto flex items-center justify-center ${
                                 popup.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 
                                 popup.type === 'error' ? 'bg-rose-500/10 text-rose-400' : 
@@ -303,8 +308,8 @@ const QuestionBank = () => {
                                  <HelpCircle className="w-10 h-10" />}
                             </div>
                             
-                            <h3 className="text-2xl font-black text-white text-center mb-2">{popup.title}</h3>
-                            <p className="text-slate-400 text-center mb-8 font-medium">{popup.message}</p>
+                            <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-center mb-2`}>{popup.title}</h3>
+                            <p className="text-slate-500 text-center mb-8 font-medium">{popup.message}</p>
                             
                             <div className="flex gap-4">
                                 {popup.type === 'confirm' ? (
@@ -328,7 +333,7 @@ const QuestionBank = () => {
                                 ) : (
                                     <button 
                                         onClick={() => setPopup(p => ({ ...p, show: false }))}
-                                        className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition-all"
+                                        className={`w-full py-4 ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-900'} rounded-2xl font-bold transition-all`}
                                     >
                                         Dismiss
                                     </button>
@@ -340,7 +345,7 @@ const QuestionBank = () => {
                 {/* HEADER */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-3xl font-black text-white tracking-tight">Question Bank</h2>
+                        <h2 className={`text-3xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} tracking-tight`}>Question Bank</h2>
                         <p className="text-slate-500 mt-1">Add, edit and manage interview questions</p>
                     </div>
                     <button 
@@ -409,33 +414,59 @@ const QuestionBank = () => {
                         ) : (
                             <>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 relative">
                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Role *</label>
                                         <input 
                                             type="text"
-                                            list="role-options"
                                             placeholder="Select or type role..."
                                             value={formData.role}
                                             onChange={(e) => setFormData({...formData, role: e.target.value})}
-                                            className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 transition-all outline-none"
+                                            className={`w-full ${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-4 focus:border-indigo-500 transition-all outline-none`}
                                         />
-                                        <datalist id="role-options">
-                                            {roleOptions.map(r => <option key={r} value={r} />)}
-                                        </datalist>
+                                        {formData.role && !roleOptions.includes(formData.role) && (
+                                            <div className={`absolute z-50 w-full mt-2 ${theme === 'dark' ? 'bg-[#0b1121] border-slate-800' : 'bg-white border-slate-200'} border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200`}>
+                                                {roleOptions
+                                                    .filter(r => r.toLowerCase().includes(formData.role.toLowerCase()))
+                                                    .slice(0, 5)
+                                                    .map((r, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setFormData({...formData, role: r})}
+                                                            className={`w-full text-left px-5 py-3 text-sm ${theme === 'dark' ? 'text-slate-300 hover:bg-indigo-600' : 'text-slate-600 hover:bg-indigo-50'} hover:text-white transition-colors font-bold border-b ${theme === 'dark' ? 'border-slate-800/50' : 'border-slate-100'} last:border-0`}
+                                                        >
+                                                            {r}
+                                                        </button>
+                                                    ))
+                                                }
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 relative">
                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Company *</label>
                                         <input 
                                             type="text"
-                                            list="company-options"
                                             placeholder="Select or type company..."
                                             value={formData.company}
                                             onChange={(e) => setFormData({...formData, company: e.target.value})}
-                                            className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 transition-all outline-none"
+                                            className={`w-full ${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-4 focus:border-indigo-500 transition-all outline-none`}
                                         />
-                                        <datalist id="company-options">
-                                            {companyOptions.map(c => <option key={c} value={c} />)}
-                                        </datalist>
+                                        {formData.company && !companyOptions.includes(formData.company) && (
+                                            <div className={`absolute z-50 w-full mt-2 ${theme === 'dark' ? 'bg-[#0b1121] border-slate-800' : 'bg-white border-slate-200'} border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200`}>
+                                                {companyOptions
+                                                    .filter(c => c.toLowerCase().includes(formData.company.toLowerCase()))
+                                                    .slice(0, 5)
+                                                    .map((c, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setFormData({...formData, company: c})}
+                                                            className={`w-full text-left px-5 py-3 text-sm ${theme === 'dark' ? 'text-slate-300 hover:bg-indigo-600' : 'text-slate-600 hover:bg-indigo-50'} hover:text-white transition-colors font-bold border-b ${theme === 'dark' ? 'border-slate-800/50' : 'border-slate-100'} last:border-0`}
+                                                        >
+                                                            {c}
+                                                        </button>
+                                                    ))
+                                                }
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="space-y-2">
@@ -443,7 +474,7 @@ const QuestionBank = () => {
                                         <select 
                                             value={formData.difficulty}
                                             onChange={(e) => setFormData({...formData, difficulty: e.target.value})}
-                                            className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 transition-all outline-none appearance-none cursor-pointer"
+                                            className={`w-full ${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-4 focus:border-indigo-500 transition-all outline-none appearance-none cursor-pointer`}
                                         >
                                             <option>Easy</option>
                                             <option>Medium</option>
@@ -526,11 +557,23 @@ const QuestionBank = () => {
 
                                 <div className="flex justify-end gap-4 mt-10">
                                     <button 
-                                        onClick={() => setIsAdding(false)}
+                                        onClick={() => {
+                                            setFormData({
+                                                role: '',
+                                                company: '',
+                                                difficulty: 'Easy',
+                                                question: '',
+                                                expectedAnswer: '',
+                                                hints: [],
+                                                tags: []
+                                            });
+                                            setIsEditing(null);
+                                        }}
                                         className="px-8 py-3.5 rounded-2xl text-slate-400 hover:text-white font-bold transition-colors"
                                     >
-                                        Reset
+                                        Reset Fields
                                     </button>
+
                                     <button 
                                         onClick={handleSave}
                                         className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3.5 rounded-2xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-indigo-600/20"
@@ -545,9 +588,9 @@ const QuestionBank = () => {
                 )}
 
                 {/* ALL QUESTIONS TABLE */}
-                <div className="bg-[#0b1121] border border-slate-800/50 rounded-3xl overflow-hidden shadow-2xl">
-                    <div className="p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-800/50">
-                        <h3 className="text-xl font-bold text-white tracking-tight">All Questions</h3>
+                <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800/50' : 'bg-white border-slate-200 shadow-xl'} border rounded-3xl overflow-hidden`}>
+                    <div className={`p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b ${theme === 'dark' ? 'border-slate-800/50' : 'border-slate-100'}`}>
+                        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'} tracking-tight`}>All Questions</h3>
                         
                         <div className="flex flex-wrap items-center gap-4">
                             {/* SEARCH */}
@@ -561,40 +604,39 @@ const QuestionBank = () => {
                                         setSearchQuery(e.target.value);
                                         setCurrentPage(1); // Reset to page 1 on search
                                     }}
-                                    className="bg-[#020617] border border-slate-800 rounded-2xl pl-12 pr-6 py-3.5 text-sm text-white focus:border-indigo-500 outline-none transition-all w-64"
+                                    className={`w-64 ${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl pl-12 pr-6 py-3.5 text-sm focus:border-indigo-500 outline-none transition-all`}
                                 />
                             </div>
 
                             {/* FILTERS */}
-                            <select 
-                                value={roleFilter}
-                                onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
-                                className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
-                            >
-                                <option>All Roles</option>
-                                {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
-                            </select>
-                            
-                            <select 
-                                value={companyFilter}
-                                onChange={(e) => { setCompanyFilter(e.target.value); setCurrentPage(1); }}
-                                className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
-                            >
-                                <option>All Companies</option>
-                                {companyOptions.map(company => <option key={company} value={company}>{company}</option>)}
-                            </select>
+                             <select 
+                                 value={roleFilter}
+                                 onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+                                 className={`${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-3.5 text-sm focus:border-indigo-500 outline-none cursor-pointer`}
+                             >
+                                 <option>All Roles</option>
+                                 {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
+                             </select>
+                             
+                             <select 
+                                 value={companyFilter}
+                                 onChange={(e) => { setCompanyFilter(e.target.value); setCurrentPage(1); }}
+                                 className={`${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-3.5 text-sm focus:border-indigo-500 outline-none cursor-pointer`}
+                             >
+                                 <option>All Companies</option>
+                                 {companyOptions.map(company => <option key={company} value={company}>{company}</option>)}
+                             </select>
 
- 
-                            <select 
-                                value={difficultyFilter}
-                                onChange={(e) => { setDifficultyFilter(e.target.value); setCurrentPage(1); }}
-                                className="bg-[#020617] border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:border-indigo-500 outline-none cursor-pointer"
-                            >
-                                <option>All Difficulties</option>
-                                <option>Easy</option>
-                                <option>Medium</option>
-                                <option>Hard</option>
-                            </select>
+                             <select 
+                                 value={difficultyFilter}
+                                 onChange={(e) => { setDifficultyFilter(e.target.value); setCurrentPage(1); }}
+                                 className={`${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-3.5 text-sm focus:border-indigo-500 outline-none cursor-pointer`}
+                             >
+                                 <option>All Difficulties</option>
+                                 <option>Easy</option>
+                                 <option>Medium</option>
+                                 <option>Hard</option>
+                             </select>
 
                         </div>
                     </div>
@@ -608,7 +650,7 @@ const QuestionBank = () => {
                         ) : (
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="border-b border-slate-800/50">
+                                    <tr className={`border-b ${theme === 'dark' ? 'border-slate-800/50' : 'border-slate-100'}`}>
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-16">#</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Question</th>
                                         <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Role</th>
@@ -627,17 +669,17 @@ const QuestionBank = () => {
                                         </tr>
                                     ) : (
                                         paginatedQuestions.map((q, i) => (
-                                            <tr key={q.docId} className="border-b border-slate-800/30 hover:bg-slate-800/20 transition-colors group">
+                                            <tr key={q.docId} className={`border-b ${theme === 'dark' ? 'border-slate-800/30 hover:bg-slate-800/20' : 'border-slate-100 hover:bg-slate-50'} transition-colors group`}>
                                                 <td className="px-8 py-6 text-sm font-bold text-slate-500">{startIndex + i + 1}</td>
                                                 <td className="px-8 py-6">
-                                                    <p className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors line-clamp-1">{q.question}</p>
+                                                    <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-indigo-600 transition-colors line-clamp-1`}>{q.question}</p>
                                                 </td>
                                                 <td className="px-8 py-6">
-                                                    <span className="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg text-xs font-bold border border-indigo-500/20">
+                                                    <span className="bg-indigo-500/10 text-indigo-500 px-3 py-1 rounded-lg text-xs font-bold border border-indigo-500/20">
                                                         {q.role}
                                                     </span>
                                                 </td>
-                                                <td className="px-8 py-6 text-sm font-semibold text-slate-400">{q.company}</td>
+                                                <td className={`px-8 py-6 text-sm font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{q.company}</td>
                                                 <td className="px-8 py-6">
                                                     <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${
                                                         q.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-500' : 
@@ -650,12 +692,12 @@ const QuestionBank = () => {
                                                 <td className="px-8 py-6">
                                                     <div className="flex gap-2">
                                                         {q.tags?.slice(0, 2).map((tag, idx) => (
-                                                            <span key={idx} className="bg-slate-800 text-slate-400 px-2 py-1 rounded-md text-[10px] font-bold">
+                                                            <span key={idx} className={`${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'} px-2 py-1 rounded-md text-[10px] font-bold`}>
                                                                 {tag}
                                                             </span>
                                                         ))}
                                                         {q.tags?.length > 2 && (
-                                                            <span className="bg-slate-800 text-slate-500 px-2 py-1 rounded-md text-[10px] font-bold">
+                                                            <span className={`${theme === 'dark' ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-400'} px-2 py-1 rounded-md text-[10px] font-bold`}>
                                                                 +{q.tags.length - 2}
                                                             </span>
                                                         )}
@@ -686,15 +728,15 @@ const QuestionBank = () => {
                     </div>
 
                     {/* PAGINATION */}
-                    <div className="flex items-center justify-between px-8 py-5 bg-[#0b1121] border-t border-slate-800/50">
+                    <div className={`flex items-center justify-between px-8 py-5 ${theme === 'dark' ? 'bg-[#0b1121] border-slate-800/50' : 'bg-slate-50 border-slate-100'} border-t`}>
                         <p className="text-xs font-bold text-slate-500">
-                            Page <span className="text-white">{currentPage}</span> of <span className="text-white">{totalPages || 1}</span>
+                            Page <span className={`${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{currentPage}</span> of <span className={`${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{totalPages || 1}</span>
                         </p>
                         <div className="flex items-center gap-3">
                             <button 
                                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                 disabled={currentPage === 1}
-                                className={`p-2 rounded-lg bg-slate-800/50 transition-all ${currentPage === 1 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                                className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-white border border-slate-200'} transition-all ${currentPage === 1 ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-indigo-600 hover:border-indigo-200'}`}
                             >
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
@@ -704,7 +746,7 @@ const QuestionBank = () => {
                                     <button 
                                         key={i}
                                         onClick={() => setCurrentPage(i + 1)}
-                                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${currentPage === i + 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-800/50 text-slate-500 hover:text-white hover:bg-slate-700'}`}
+                                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${currentPage === i + 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : theme === 'dark' ? 'bg-slate-800/50 text-slate-500 hover:text-white' : 'bg-white border border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-indigo-600'}`}
                                     >
                                         {i + 1}
                                     </button>
@@ -714,12 +756,13 @@ const QuestionBank = () => {
                             <button 
                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                 disabled={currentPage === totalPages || totalPages === 0}
-                                className={`p-2 rounded-lg bg-slate-800/50 transition-all ${currentPage === totalPages || totalPages === 0 ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                                className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-white border border-slate-200'} transition-all ${currentPage === totalPages || totalPages === 0 ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-indigo-600 hover:border-indigo-200'}`}
                             >
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
+
                 </div>
             </div>
         </AdminLayout>

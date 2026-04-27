@@ -4,12 +4,15 @@ import {
     collection, query, onSnapshot, getDocs, 
     deleteDoc, doc, writeBatch, where, addDoc, serverTimestamp 
 } from 'firebase/firestore';
-import { Plus, Search, MoreVertical, Edit2, Trash2, Loader2, CheckCircle2, HelpCircle, AlertCircle } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit2, Trash2, Loader2, CheckCircle2, HelpCircle, AlertCircle, X } from 'lucide-react';
 import { db } from '../../firebase/firebase';
 import AdminLayout from './AdminLayout';
+import { useTheme } from '../../context/ThemeContext';
 
 const GenericAdminPage = ({ title, description, fieldName, targetCollection, icon: Icon }) => {
+    const { theme } = useTheme();
     const navigate = useNavigate();
+
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -171,15 +174,15 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
         <AdminLayout>
             {popup.show && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setPopup(p => ({ ...p, show: false }))} />
-                    <div className="bg-[#0b1121] border border-slate-800 rounded-[40px] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 relative text-center">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setPopup(p => ({ ...p, show: false }))} />
+                    <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800' : 'bg-white border-slate-200'} border rounded-[40px] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 relative text-center`}>
                         <div className={`w-20 h-20 rounded-3xl mb-6 mx-auto flex items-center justify-center ${
                             popup.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'
                         }`}>
                             {popup.type === 'success' ? <CheckCircle2 className="w-10 h-10" /> : <HelpCircle className="w-10 h-10" />}
                         </div>
-                        <h3 className="text-2xl font-black text-white mb-2">{popup.title}</h3>
-                        <p className="text-slate-400 mb-8 font-medium">{popup.message}</p>
+                        <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} mb-2`}>{popup.title}</h3>
+                        <p className="text-slate-500 mb-8 font-medium">{popup.message}</p>
                         <div className="flex gap-4">
                             {popup.type === 'confirm' ? (
                                 <>
@@ -187,7 +190,7 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
                                     <button onClick={() => { popup.onConfirm(); setPopup(p => ({ ...p, show: false })); }} className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold">Confirm</button>
                                 </>
                             ) : (
-                                <button onClick={() => setPopup(p => ({ ...p, show: false }))} className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold">Dismiss</button>
+                                <button onClick={() => setPopup(p => ({ ...p, show: false }))} className={`w-full py-4 ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-900'} rounded-2xl font-bold`}>Dismiss</button>
                             )}
                         </div>
                     </div>
@@ -196,13 +199,13 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
             {/* CUSTOM ADD MODAL */}
             {isAddingNew && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsAddingNew(false)} />
-                    <div className="bg-[#0b1121] border border-slate-800 rounded-[40px] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 relative">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsAddingNew(false)} />
+                    <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800' : 'bg-white border-slate-200'} border rounded-[40px] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 relative`}>
                         <div className="w-20 h-20 rounded-3xl mb-6 mx-auto bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
                             <Plus className="w-10 h-10" />
                         </div>
-                        <h3 className="text-2xl font-black text-white text-center mb-2">New {title.slice(0, -1)}</h3>
-                        <p className="text-slate-400 text-center mb-8 font-medium">Enter the name for your new {title.slice(0, -1).toLowerCase()}.</p>
+                        <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} text-center mb-2`}>New {title.slice(0, -1)}</h3>
+                        <p className="text-slate-500 text-center mb-8 font-medium">Enter the name for your new {title.slice(0, -1).toLowerCase()}.</p>
                         
                         <div className="space-y-4">
                             <input 
@@ -211,7 +214,7 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
                                 value={newItemName}
                                 onChange={(e) => setNewItemName(e.target.value)}
                                 autoFocus
-                                className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-6 py-4 text-white focus:border-indigo-500 outline-none transition-all"
+                                className={`w-full ${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-6 py-4 focus:border-indigo-500 outline-none transition-all`}
                             />
                             <div className="flex gap-4">
                                 <button onClick={() => setIsAddingNew(false)} className="flex-1 py-4 rounded-2xl text-slate-400 hover:text-white font-bold transition-colors">Cancel</button>
@@ -231,8 +234,8 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
             <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-3xl font-black text-white tracking-tight">{title}</h2>
-                        <p className="text-slate-500 mt-1">{description}</p>
+                        <h2 className={`text-3xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} tracking-tight`}>{title}</h2>
+                        <p className="text-slate-500 mt-1 font-medium">{description}</p>
                     </div>
                     <button 
                         onClick={() => setIsAddingNew(true)}
@@ -243,8 +246,8 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
                     </button>
                 </div>
 
-                <div className="bg-[#0b1121] border border-slate-800/50 rounded-3xl shadow-2xl min-h-[400px]">
-                    <div className="p-8 border-b border-slate-800/50">
+                <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800/50' : 'bg-white border-slate-200 shadow-xl'} border rounded-3xl min-h-[400px]`}>
+                    <div className={`p-8 border-b ${theme === 'dark' ? 'border-slate-800/50' : 'border-slate-100'}`}>
                         <div className="relative w-full max-w-md group">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-indigo-500 transition-colors" />
                             <input 
@@ -252,7 +255,7 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
                                 placeholder={`Search ${title.toLowerCase()}...`}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="bg-[#020617] border border-slate-800 rounded-2xl pl-12 pr-6 py-3.5 text-sm text-white focus:border-indigo-500 outline-none transition-all w-full"
+                                className={`${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl pl-12 pr-6 py-3.5 text-sm focus:border-indigo-500 outline-none transition-all w-full`}
                             />
                         </div>
                     </div>
@@ -270,7 +273,7 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
                                 </div>
                             ) : (
                                 filteredItems.map((item, i) => (
-                                    <div key={i} className="bg-[#020617] border border-slate-800/50 p-6 rounded-2xl flex items-center justify-between group hover:border-indigo-500/30 transition-all relative">
+                                    <div key={i} className={`${theme === 'dark' ? 'bg-[#020617] border-slate-800/50' : 'bg-white border-slate-200 shadow-md hover:shadow-lg'} border p-6 rounded-2xl flex items-center justify-between group hover:border-indigo-500/30 transition-all relative`}>
                                         <div 
                                             className="flex items-center gap-4 cursor-pointer flex-1"
                                             onClick={() => handleEditSection(item.name)}
@@ -279,7 +282,7 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
                                                 <Icon className="w-6 h-6 text-indigo-400 group-hover:text-white" />
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-white group-hover:text-indigo-400 transition-colors">{item.name}</h4>
+                                                <h4 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'} group-hover:text-indigo-600 transition-colors`}>{item.name}</h4>
                                                 <p className="text-xs text-slate-500 font-medium group-hover:text-slate-400 transition-colors">{item.count} Questions</p>
                                             </div>
                                         </div>
@@ -288,16 +291,16 @@ const GenericAdminPage = ({ title, description, fieldName, targetCollection, ico
                                         <div className="relative">
                                             <button 
                                                 onClick={() => setActiveMenu(activeMenu === i ? null : i)}
-                                                className="p-2 text-slate-600 hover:text-white transition-colors rounded-lg hover:bg-slate-800"
+                                                className={`p-2 ${theme === 'dark' ? 'text-slate-600 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100'} transition-colors rounded-lg`}
                                             >
                                                 <MoreVertical className="w-5 h-5" />
                                             </button>
 
                                             {activeMenu === i && (
-                                                <div className="absolute right-0 mt-2 w-48 bg-[#0b1121] border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in duration-200">
+                                                <div className={`absolute right-0 mt-2 w-48 ${theme === 'dark' ? 'bg-[#0b1121] border-slate-800' : 'bg-white border-slate-200 shadow-2xl'} border rounded-xl z-50 overflow-hidden animate-in fade-in zoom-in duration-200`}>
                                                     <button 
                                                         onClick={() => handleEditSection(item.name)}
-                                                        className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+                                                        className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold ${theme === 'dark' ? 'text-slate-300 hover:bg-indigo-600' : 'text-slate-600 hover:bg-indigo-50'} hover:text-white transition-colors`}
                                                     >
                                                         <Edit2 className="w-4 h-4" />
                                                         Edit Questions

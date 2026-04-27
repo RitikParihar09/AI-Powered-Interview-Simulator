@@ -11,15 +11,20 @@ import {
     Users, 
     Settings, 
     LogOut,
-    ChevronDown
+    ChevronDown,
+    Sun,
+    Moon
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const AdminLayout = ({ children }) => {
     const { isAdmin, logout, currentUser, loading } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
+
     
     React.useEffect(() => {
         if (!loading && !isAdmin) {
@@ -52,13 +57,13 @@ const AdminLayout = ({ children }) => {
     };
 
     return (
-        <div className="flex h-screen bg-[#020617] text-slate-300 font-inter overflow-hidden">
+        <div className={`flex h-screen ${theme === 'dark' ? 'bg-[#020617]' : 'bg-slate-50'} text-slate-300 font-inter overflow-hidden transition-colors duration-500`}>
             {/* SIDEBAR */}
-            <aside className="w-72 bg-[#0b1121] border-r border-slate-800/50 flex flex-col">
+            <aside className={`w-72 ${theme === 'dark' ? 'bg-[#0b1121] border-slate-800/50' : 'bg-white border-slate-200'} border-r flex flex-col transition-colors duration-500`}>
                 {/* LOGO */}
                 <div className="p-8">
                     <div>
-                        <h1 className="text-xl font-black text-white tracking-tight text-center">Interview Buddy</h1>
+                        <h1 className={`text-xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} tracking-tight text-center`}>Interview Buddy</h1>
                         <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest text-center">Admin Panel</p>
                     </div>
                 </div>
@@ -74,25 +79,46 @@ const AdminLayout = ({ children }) => {
                                 className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 group ${
                                     isActive 
                                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                                    : 'hover:bg-slate-800/50 text-slate-400 hover:text-white'
+                                    : theme === 'dark' 
+                                        ? 'hover:bg-slate-800/50 text-slate-400 hover:text-white' 
+                                        : 'hover:bg-slate-100 text-slate-500 hover:text-slate-900'
                                 }`}
                             >
-                                <item.icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                                <item.icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`} />
                                 <span className="font-semibold text-sm tracking-wide">{item.label}</span>
                             </Link>
                         );
                     })}
                 </nav>
 
-                {/* USER PROFILE */}
-                <div className="p-6 border-t border-slate-800/50">
-                    <div className="bg-slate-800/40 rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:bg-slate-800/60 transition-colors">
+                {/* THEME TOGGLE & USER PROFILE */}
+                <div className={`p-6 border-t ${theme === 'dark' ? 'border-slate-800/50' : 'border-slate-200'}`}>
+                    
+                    {/* Theme Toggle Slider */}
+                    <div className={`mb-6 p-1 rounded-2xl flex items-center justify-between ${theme === 'dark' ? 'bg-slate-800/40' : 'bg-slate-100'}`}>
+                        <button 
+                            onClick={() => theme !== 'light' && toggleTheme()}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${theme === 'light' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            <Sun className="w-3.5 h-3.5" />
+                            Light
+                        </button>
+                        <button 
+                            onClick={() => theme !== 'dark' && toggleTheme()}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${theme === 'dark' ? 'bg-slate-900 text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-600'}`}
+                        >
+                            <Moon className="w-3.5 h-3.5" />
+                            Dark
+                        </button>
+                    </div>
+
+                    <div className={`${theme === 'dark' ? 'bg-slate-800/40 hover:bg-slate-800/60' : 'bg-slate-100 hover:bg-slate-200'} rounded-2xl p-4 flex items-center justify-between group cursor-pointer transition-colors`}>
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md">
                                 {currentUser?.email?.[0].toUpperCase() || 'A'}
                             </div>
                             <div className="overflow-hidden">
-                                <p className="text-sm font-bold text-white truncate">Admin User</p>
+                                <p className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Admin User</p>
                                 <p className="text-[10px] text-slate-500 truncate lowercase">{currentUser?.email}</p>
                             </div>
                         </div>
@@ -110,10 +136,11 @@ const AdminLayout = ({ children }) => {
             </aside>
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 overflow-y-auto bg-[#020617] scroll-smooth">
+            <main className={`flex-1 overflow-y-auto ${theme === 'dark' ? 'bg-[#020617]' : 'bg-slate-50'} transition-colors duration-500 scroll-smooth`}>
                 {children}
             </main>
         </div>
+
     );
 };
 

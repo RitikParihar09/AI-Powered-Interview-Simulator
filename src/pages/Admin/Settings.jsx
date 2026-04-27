@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import AdminLayout from './AdminLayout';
+import { useTheme } from '../../context/ThemeContext';
 import { 
     Settings as SettingsIcon, 
     Shield, 
@@ -19,6 +20,7 @@ import {
 
 
 const Settings = () => {
+    const { theme } = useTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -84,9 +86,9 @@ const Settings = () => {
     if (loading) {
         return (
             <AdminLayout>
-                <div className="h-[80vh] flex flex-col items-center justify-center gap-4">
+                <div className={`h-[80vh] flex flex-col items-center justify-center gap-4 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
                     <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
-                    <p className="text-slate-500 font-bold animate-pulse">Loading Configuration...</p>
+                    <p className="font-bold animate-pulse">Loading Configuration...</p>
                 </div>
             </AdminLayout>
         );
@@ -97,7 +99,7 @@ const Settings = () => {
             <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-3xl font-black text-white tracking-tight">Settings</h2>
+                        <h2 className={`text-3xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'} tracking-tight`}>Settings</h2>
                         <p className="text-slate-500 mt-1">Manage your platform configuration</p>
                     </div>
                     <button 
@@ -119,12 +121,12 @@ const Settings = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* GENERAL SETTINGS */}
-                    <div className="bg-[#0b1121] border border-slate-800/50 p-8 rounded-[40px] space-y-6">
+                    <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800/50' : 'bg-white border-slate-200 shadow-xl'} border p-8 rounded-[40px] space-y-6`}>
                         <div className="flex items-center gap-4 mb-2">
                             <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center">
                                 <Globe className="w-6 h-6 text-blue-400" />
                             </div>
-                            <h3 className="text-xl font-bold text-white">General Settings</h3>
+                            <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>General Settings</h3>
                         </div>
                         
                         <div className="space-y-4">
@@ -134,7 +136,7 @@ const Settings = () => {
                                     type="text"
                                     value={config.siteName}
                                     onChange={(e) => setConfig({...config, siteName: e.target.value})}
-                                    className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 transition-all outline-none"
+                                    className={`w-full ${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-4 focus:border-indigo-500 transition-all outline-none`}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -146,7 +148,7 @@ const Settings = () => {
                                     type="email"
                                     value={config.adminEmail}
                                     readOnly
-                                    className="w-full bg-[#020617] border border-slate-800/50 rounded-2xl px-5 py-4 text-slate-500 cursor-not-allowed transition-all outline-none"
+                                    className={`w-full ${theme === 'dark' ? 'bg-[#020617] border-slate-800/50' : 'bg-slate-100 border-slate-200/50'} border rounded-2xl px-5 py-4 text-slate-500 cursor-not-allowed transition-all outline-none`}
                                 />
                                 <p className="text-[10px] text-slate-600 font-medium ml-1">Managed via environment variables (.env)</p>
                             </div>
@@ -155,28 +157,28 @@ const Settings = () => {
                     </div>
 
                     {/* ADMIN PERMISSIONS */}
-                    <div className="bg-[#0b1121] border border-slate-800/50 p-8 rounded-[40px] space-y-6">
+                    <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800/50' : 'bg-white border-slate-200 shadow-xl'} border p-8 rounded-[40px] space-y-6`}>
                         <div className="flex items-center gap-4 mb-2">
                             <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center">
                                 <Users className="w-6 h-6 text-indigo-400" />
                             </div>
-                            <h3 className="text-xl font-bold text-white">Additional Admins</h3>
+                            <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Additional Admins</h3>
                         </div>
                         
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Authorized Emails</label>
-                                <div className="bg-[#020617] border border-slate-800 rounded-2xl p-4 min-h-[120px] space-y-3">
+                                <div className={`${theme === 'dark' ? 'bg-[#020617] border-slate-800' : 'bg-slate-50 border-slate-200'} border rounded-2xl p-4 min-h-[120px] space-y-3`}>
                                     <div className="flex flex-wrap gap-2">
                                         {config.adminEmails.map((email, i) => (
-                                            <span key={i} className="flex items-center gap-2 bg-indigo-500/10 text-indigo-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-500/20">
+                                            <span key={i} className="flex items-center gap-2 bg-indigo-500/10 text-indigo-500 px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-500/20">
                                                 {email}
-                                                <X className="w-3 h-3 cursor-pointer hover:text-indigo-300" onClick={() => handleRemoveAdmin(email)} />
+                                                <X className="w-3 h-3 cursor-pointer hover:text-indigo-600" onClick={() => handleRemoveAdmin(email)} />
                                             </span>
                                         ))}
                                     </div>
                                     <input 
-                                        className="w-full bg-transparent border-none outline-none text-sm text-slate-400"
+                                        className={`w-full bg-transparent border-none outline-none text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}
                                         placeholder="Add email and press Enter"
                                         value={newAdminEmail}
                                         onChange={(e) => setNewAdminEmail(e.target.value)}
@@ -190,12 +192,12 @@ const Settings = () => {
 
 
                     {/* API CONFIGURATION */}
-                    <div className="bg-[#0b1121] border border-slate-800/50 p-8 rounded-[40px] space-y-6">
+                    <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800/50' : 'bg-white border-slate-200 shadow-xl'} border p-8 rounded-[40px] space-y-6`}>
                         <div className="flex items-center gap-4 mb-2">
                             <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center">
                                 <Key className="w-6 h-6 text-amber-400" />
                             </div>
-                            <h3 className="text-xl font-bold text-white">AI Configuration</h3>
+                            <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>AI Configuration</h3>
                         </div>
                         
                         <div className="space-y-4">
@@ -204,7 +206,7 @@ const Settings = () => {
                                 <select 
                                     value={config.apiModel}
                                     onChange={(e) => setConfig({...config, apiModel: e.target.value})}
-                                    className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 transition-all outline-none appearance-none cursor-pointer"
+                                    className={`w-full ${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-4 focus:border-indigo-500 transition-all outline-none appearance-none cursor-pointer`}
                                 >
                                     <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</option>
                                     <option value="google/gemini-pro">Gemini Pro</option>
@@ -218,45 +220,45 @@ const Settings = () => {
                                     type="number"
                                     value={config.maxInterviewDuration}
                                     onChange={(e) => setConfig({...config, maxInterviewDuration: e.target.value})}
-                                    className="w-full bg-[#020617] border border-slate-800 rounded-2xl px-5 py-4 text-white focus:border-indigo-500 transition-all outline-none"
+                                    className={`w-full ${theme === 'dark' ? 'bg-[#020617] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl px-5 py-4 focus:border-indigo-500 transition-all outline-none`}
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* PERMISSIONS */}
-                    <div className="bg-[#0b1121] border border-slate-800/50 p-8 rounded-[40px] md:col-span-2">
+                    <div className={`${theme === 'dark' ? 'bg-[#0b1121] border-slate-800/50' : 'bg-white border-slate-200 shadow-xl'} border p-8 rounded-[40px] md:col-span-2`}>
                         <div className="flex items-center gap-4 mb-8">
                             <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center">
                                 <Shield className="w-6 h-6 text-purple-400" />
                             </div>
-                            <h3 className="text-xl font-bold text-white">Platform Permissions</h3>
+                            <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Platform Permissions</h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="flex items-center justify-between p-6 bg-[#020617] border border-slate-800 rounded-3xl">
+                            <div className={`flex items-center justify-between p-6 ${theme === 'dark' ? 'bg-[#020617] border-slate-800' : 'bg-slate-50 border-slate-200'} border rounded-3xl`}>
                                 <div>
-                                    <p className="font-bold text-white">Allow New Signups</p>
+                                    <p className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Allow New Signups</p>
                                     <p className="text-xs text-slate-500 mt-1">Enable or disable registration of new accounts</p>
                                 </div>
                                 <button 
                                     onClick={() => setConfig({...config, allowSignup: !config.allowSignup})}
-                                    className={`w-14 h-8 rounded-full transition-all relative ${config.allowSignup ? 'bg-indigo-600' : 'bg-slate-800'}`}
+                                    className={`w-14 h-8 rounded-full transition-all relative ${config.allowSignup ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-800'}`}
                                 >
-                                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${config.allowSignup ? 'left-7' : 'left-1'}`} />
+                                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-sm transition-all ${config.allowSignup ? 'left-7' : 'left-1'}`} />
                                 </button>
                             </div>
 
-                            <div className="flex items-center justify-between p-6 bg-[#020617] border border-slate-800 rounded-3xl">
+                            <div className={`flex items-center justify-between p-6 ${theme === 'dark' ? 'bg-[#020617] border-slate-800' : 'bg-slate-50 border-slate-200'} border rounded-3xl`}>
                                 <div>
-                                    <p className="font-bold text-white">Maintenance Mode</p>
+                                    <p className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Maintenance Mode</p>
                                     <p className="text-xs text-slate-500 mt-1">Disable front-end access for users</p>
                                 </div>
                                 <button 
                                     onClick={() => setConfig({...config, maintenanceMode: !config.maintenanceMode})}
-                                    className={`w-14 h-8 rounded-full transition-all relative ${config.maintenanceMode ? 'bg-rose-600' : 'bg-slate-800'}`}
+                                    className={`w-14 h-8 rounded-full transition-all relative ${config.maintenanceMode ? 'bg-rose-600' : 'bg-slate-300 dark:bg-slate-800'}`}
                                 >
-                                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${config.maintenanceMode ? 'left-7' : 'left-1'}`} />
+                                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-sm transition-all ${config.maintenanceMode ? 'left-7' : 'left-1'}`} />
                                 </button>
                             </div>
                         </div>
