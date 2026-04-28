@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ResumeDropzone from './components/ResumeDropzone';
 import Button from '../../components/ui/Button';
 import { Briefcase, Building2, FileText, Clock, Play, AlertCircle, X, HelpCircle, Gauge } from 'lucide-react';
+import { getCompanySuggestions } from '../../services/llmService';
 
 const InterviewSetup = ({ onStart }) => {
     const [formData, setFormData] = useState({
@@ -13,11 +14,47 @@ const InterviewSetup = ({ onStart }) => {
         difficulty: 'Medium'
     });
     const [error, setError] = useState(null);
+    const [companySuggestions, setCompanySuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const suggestionsRef = useRef(null);
+
+    // Close suggestions when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Fetch company suggestions when company field changes
+    const fetchCompanySuggestions = async (query) => {
+        if (query.trim().length === 0) {
+            setCompanySuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+        const suggestions = await getCompanySuggestions(query);
+        setCompanySuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
         if (error) setError(null);
+
+        // Fetch company suggestions when company field changes
+        if (name === 'company') {
+            fetchCompanySuggestions(value);
+        }
+    };
+
+    const handleSelectCompany = (company) => {
+        setFormData(prev => ({ ...prev, company }));
+        setShowSuggestions(false);
     };
 
     const handleFileChange = (file) => {
@@ -109,11 +146,31 @@ const InterviewSetup = ({ onStart }) => {
                                 <label htmlFor="company" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                                     <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Target Company
                                 </label>
-                                <input
-                                    type="text" name="company" id="company" value={formData.company} onChange={handleInputChange}
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium hover:border-indigo-300"
-                                    placeholder="e.g., Google, Amazon"
-                                />
+                                <div className="relative" ref={suggestionsRef}>
+                                    <input
+                                        type="text" name="company" id="company" value={formData.company} onChange={handleInputChange}
+                                        onFocus={() => formData.company && setShowSuggestions(true)}
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium hover:border-indigo-300"
+                                        placeholder="e.g., Google, Amazon"
+                                    />
+                                    
+                                    {/* Suggestions Dropdown */}
+                                    {showSuggestions && companySuggestions.length > 0 && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto">
+                                            {companySuggestions.map((company, index) => (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() => handleSelectCompany(company)}
+                                                    className="w-full text-left px-4 py-2.5 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-slate-700 last:border-b-0 font-medium flex items-center gap-2"
+                                                >
+                                                    <Building2 className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                                                    {company}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
