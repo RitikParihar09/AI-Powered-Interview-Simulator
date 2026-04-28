@@ -206,6 +206,33 @@ export const getQuestionBankQuestions = async (company, role, difficulty) => {
   }
 };
 
+/**
+ * HELPER: Fetch unique company names from question bank (Firestore)
+ * Returns list of all companies available in the database
+ */
+export const getCompanySuggestions = async (searchQuery = '') => {
+  try {
+    const questionsRef = collection(db, 'questions');
+    const snapshot = await getDocs(questionsRef);
+    
+    // Extract unique companies and filter based on search query
+    const companiesSet = new Set();
+    snapshot.docs.forEach(doc => {
+      const company = doc.data().company;
+      if (company && company.toLowerCase().includes(searchQuery.toLowerCase())) {
+        companiesSet.add(company);
+      }
+    });
+
+    const companies = Array.from(companiesSet).sort();
+    console.log(`✅ Found ${companies.length} companies matching "${searchQuery}"`);
+    return companies;
+  } catch (error) {
+    console.error("🚨 Error fetching company suggestions:", error);
+    return [];
+  }
+};
+
 // ------------------------------------------------------------------
 // 🚀 EXPORTED FUNCTIONS
 // ------------------------------------------------------------------
@@ -247,7 +274,7 @@ Ask exactly ONE short, professional opening question based on their resume. Do N
   return response || "Tell me about yourself and your background.";
 };
 
-export const getNextQuestion = async ({ lastAnswer, history, resumeText = null, difficulty = 'Medium' }) => {
+export const getNextQuestion = async ({ lastAnswer, history, resumeText = null, difficulty = 'Medium', forceTopicChange = false }) => {
   // Convert your app's history format to OpenRouter format
   // App uses: { role: 'model' | 'user', parts: [{ text: '...' }] }
   // OpenRouter needs: { role: 'assistant' | 'user', content: '...' }
@@ -268,6 +295,15 @@ IMPORTANT RULES:
 - Continue asking relevant technical questions throughout the interview
 - Build on previous answers to go deeper into topics
 - If the candidate gives a weak answer, ask a different question to give them another chance`;
+
+  // Add instruction to force topic change if needed
+  if (forceTopicChange) {
+    systemPrompt += `\n\n🔄 CRITICAL: You have asked 3 follow-up questions on the current topic. NOW YOU MUST:
+1. Switch to a completely different technical topic (NOT related to the previous one)
+2. Start fresh with an opening question about this new topic
+3. Do NOT ask any follow-up on the previous topic
+4. Choose from skills mentioned in the resume or general technical areas`;
+  }
 
   // If resume text is provided, include it in the context
   if (resumeText) {

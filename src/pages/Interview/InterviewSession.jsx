@@ -24,6 +24,9 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     const [questionBankQuestions, setQuestionBankQuestions] = useState([]);
     const [questionBankIndex, setQuestionBankIndex] = useState(0);
 
+    // Follow-up Question Tracking (Resume-based interviews)
+    const [followUpCount, setFollowUpCount] = useState(0);
+
     // UI/Device State
     const [isVideoOn, setIsVideoOn] = useState(true);
     const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -296,6 +299,7 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     const startSession = async () => {
         isEndedRef.current = false;
         setIsSessionActive(true); // 🟢 DIRECT START: No countdown
+        setFollowUpCount(0); // Reset follow-up count for new session
 
         // Parse resume if provided
         let parsedResumeText = null;
@@ -364,19 +368,38 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
             nextQ = currentBankQuestion.question || currentBankQuestion.text;
             setQuestionBankIndex(prev => prev + 1);
             console.log(`📋 Using question bank question ${questionBankIndex + 1}/${questionBankQuestions.length}`);
+            // Reset follow-up count when moving to next question bank question
+            setFollowUpCount(0);
         } else if (questionBankIndex >= questionBankQuestions.length && questionBankQuestions.length > 0) {
             console.log("✅ Question bank exhausted. Switching to AI-generated questions.");
         }
 
         // FALLBACK TO AI IF NO BANK QUESTIONS OR EXHAUSTED
         if (!nextQ) {
+            // Increment follow-up count for resume-based interviews
+            const isResumeBasedInterview = resumeText && !interviewData?.useQuestionBank;
+            let shouldForceTopicChange = false;
+
+            if (isResumeBasedInterview) {
+                const newFollowUpCount = followUpCount + 1;
+                setFollowUpCount(newFollowUpCount);
+
+                // Force topic change after 3 follow-ups
+                if (newFollowUpCount >= 3) {
+                    shouldForceTopicChange = true;
+                    setFollowUpCount(0); // Reset for next topic
+                    console.log("🔄 Max follow-ups reached. Forcing AI to switch to new topic.");
+                }
+            }
+
             try {
                 nextQ = await getNextQuestion({
                     lastQuestion: currentQuestion,
                     lastAnswer: answer,
                     history: updatedHistory,
                     resumeText: resumeText,
-                    difficulty: interviewData?.difficulty || "Medium"
+                    difficulty: interviewData?.difficulty || "Medium",
+                    forceTopicChange: shouldForceTopicChange
                 });
             } catch (e) {
                 if (!isEndedRef.current) setStatus("Error fetching question.");
