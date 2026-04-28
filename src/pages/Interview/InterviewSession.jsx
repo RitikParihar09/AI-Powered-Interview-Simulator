@@ -117,7 +117,7 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     // ==========================================
 
     const performAutoSubmit = () => {
-        console.log("Auto-submitting due to 7s silence...");
+        console.log("Auto-submitting due to 10s silence...");
         stopDeepgram(); // Stop listening
 
         setTimeout(() => {
@@ -137,7 +137,7 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
         // "Smart VAD": Wait 5 seconds. If no new speech, auto-submit.
         silenceTimerRef.current = setTimeout(() => {
             performAutoSubmit();
-        }, 5000);
+        }, 10000);
     };
 
     // ==========================================
@@ -174,7 +174,7 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
 
             socket.onmessage = (message) => {
                 const received = JSON.parse(message.data);
-                const text = received.channel?.alternatives[0]?.transcript;
+                const text = received.channel?.alternatives?.[0]?.transcript;
 
                 if (text) {
                     resetSilenceTimer(); // Reset timer if any text detected

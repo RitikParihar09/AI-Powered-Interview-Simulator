@@ -10,10 +10,11 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const OPENROUTER_API_KEY = (import.meta.env.VITE_OPENROUTER_API_KEY || "").trim();
+console.log("🔑 API Key loaded (length):", OPENROUTER_API_KEY.length);
 
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "google/gemini-2.0-flash-001"; // Fast & Smart
+const MODEL = "google/gemini-2.5-flash"; // Latest stable Gemini Flash Lite
 
 // Fallback questions if API fails
 const FALLBACK_QUESTIONS = [
@@ -63,42 +64,109 @@ export const parseResumeText = async (file) => {
 };
 
 /**
+ * HELPER: Call Gemini directly via Google AI Studio as fallback
+ */
+const callGeminiDirect = async (messages) => {
+  const GEMINI_API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+  if (!GEMINI_API_KEY) {
+    console.warn("⚠️ No Gemini API Key found for fallback.");
+    return null;
+  }
+  
+  console.log("🔄 Initiating Fallback to Google AI Studio (Gemini directly)");
+  
+  try {
+    // Separate system prompt from user/assistant messages for Gemini format
+    let systemInstruction = null;
+    const contents = [];
+    
+    for (const msg of messages) {
+      if (msg.role === "system") {
+        systemInstruction = { parts: [{ text: msg.content }] };
+      } else {
+        contents.push({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }]
+        });
+      }
+    }
+    
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const requestBody = { contents };
+    if (systemInstruction) {
+      requestBody.systemInstruction = systemInstruction;
+    }
+    
+    requestBody.generationConfig = { maxOutputTokens: 150 };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("🚨 Gemini Fallback Error:", response.status, errorData);
+      return null;
+    }
+    
+    const data = await response.json();
+    if (data.candidates && data.candidates.length > 0) {
+      return data.candidates[0].content.parts[0].text.trim();
+    }
+    return null;
+  } catch (error) {
+    console.error("🚨 Gemini Fallback Network Error:", error);
+    return null;
+  }
+};
+
+/**
  * HELPER: Call OpenRouter API
  */
 const callOpenRouter = async (messages) => {
   if (!OPENROUTER_API_KEY) {
-    console.warn("⚠️ No API Key. Returning fallback.");
+    console.warn("⚠️ No API Key found in Environment Variables.");
     return null;
   }
 
   try {
+    console.log("🚀 Calling OpenRouter with model:", MODEL);
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        // Optional: Site URL and Name for OpenRouter rankings
-        "HTTP-Referer": "http://localhost:5173",
+        "HTTP-Referer": window.location.origin, // Dynamically use current URL
         "X-Title": "Interview Buddy"
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: "google/gemini-2.5-flash",
+        max_tokens: 150, // CRITICAL: Required to prevent 402 error when balance is low
         messages: messages
       })
     });
 
-    const data = await response.json();
-
-    if (data.error) {
-      console.error("🚨 OpenRouter Error:", data.error.message);
-      return null;
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("🚨 OpenRouter Error Detail:", {
+        status: response.status,
+        message: errorData.error?.message || "Unknown error",
+        error: errorData.error
+      });
+      // Fallback to direct Gemini API
+      return await callGeminiDirect(messages);
     }
 
+    const data = await response.json();
     return data.choices[0].message.content.trim();
 
   } catch (error) {
-    console.error("🚨 Network Error:", error);
-    return null;
+    console.error("🚨 OpenRouter Network/Parsing Error:", error);
+    // Fallback to direct Gemini API
+    return await callGeminiDirect(messages);
   }
 };
 
@@ -166,6 +234,10 @@ Ask exactly ONE short, professional opening question based on their resume. Do N
     {
       role: "system",
       content: systemPrompt
+    },
+    {
+      role: "user",
+      content: "Please start the interview by asking your first question."
     }
   ];
 
