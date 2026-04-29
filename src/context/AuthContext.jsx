@@ -11,6 +11,11 @@ import { doc, setDoc, getDoc, serverTimestamp, onSnapshot } from "firebase/fires
 
 const AuthContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
+export function useAuth() {
+    return useContext(AuthContext);
+}
+
 const PRIMARY_ADMIN = 'ritikparihar2040@gmail.com';
 export { PRIMARY_ADMIN };
 
