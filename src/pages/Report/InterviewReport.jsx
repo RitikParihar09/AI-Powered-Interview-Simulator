@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Printer, ChevronDown, ChevronUp, Award, AlertCircle, CheckCircle, Loader2, FileText, RefreshCw } from 'lucide-react';
-// 👇 1. NEW IMPORTS FOR FIREBASE
+import { useNavigate } from 'react-router-dom';
+import { Download, Printer, ChevronDown, ChevronUp, Award, AlertCircle, CheckCircle, Loader2, FileText, RefreshCw, Clock, Sparkles, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-
-// -----------------------------------------------------------
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-// -----------------------------------------------------------
+import { generateFinalReport } from '../../services/llmService';
 
 // --- CONFIDENCE METER ---
 const ConfidenceMeter = ({ score }) => {
@@ -55,7 +52,8 @@ const InterviewReport = ({ conversationHistory, interviewData, onRestart }) => {
     const [expandedQuestion, setExpandedQuestion] = useState(null);
     const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
-    // 👇 2. GET USER & SAVING STATE
+    // 👇 2. NAVIGATION & USER STATE
+    const navigate = useNavigate();
     const { currentUser } = useAuth();
     const [savedToDb, setSavedToDb] = useState(false);
 
@@ -74,138 +72,26 @@ const InterviewReport = ({ conversationHistory, interviewData, onRestart }) => {
     };
 
 
+    const generatedRef = React.useRef(false);
+
     useEffect(() => {
         const generateReport = async () => {
+            if (generatedRef.current) return; // 🚩 LOCK: Prevent double API calls
+            
             if (!conversationHistory || conversationHistory.length === 0) {
                 setReportData(getFallbackData());
                 setIsLoading(false);
                 return;
             }
 
+            generatedRef.current = true;
             const transcript = buildTranscript();
             console.log("📊 Generating interview report...");
-            console.log("📝 Transcript length:", transcript.length, "characters");
+            console.log("📝 History length:", conversationHistory.length, "turns");
 
             try {
-                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "http://localhost:5173",
-                        "X-Title": "Interview Buddy - Report Generator"
-                    },
-                    body: JSON.stringify({
-                        model: "google/gemini-2.0-flash-001",
-                        messages: [
-                            {
-                                role: "system",
-                                content: `You are an expert technical interview evaluator with 10+ years of experience assessing candidates.
-
-YOUR ROLE:
-- Analyze interview transcripts objectively and fairly
-- Provide constructive, actionable feedback
-- Score realistically based on actual performance
-- Help candidates improve their interview skills
-
-ANALYSIS PROCESS:
-1. Read the entire interview transcript carefully
-2. Identify each question-answer pair
-3. Evaluate each answer based on:
-   - Technical accuracy
-   - Clarity of communication
-   - Depth of knowledge
-   - Problem-solving approach
-   - Relevance to the question
-4. Assign fair scores (0-10 scale)
-5. Provide specific, helpful feedback for each answer
-6. Identify overall strengths and weaknesses
-7. Suggest concrete improvement areas
-
-SCORING GUIDELINES (0-10 scale):
-- 0-2: No answer, silence, "[NO SPEECH DETECTED]", or completely wrong
-- 3-4: Poor answer with major gaps or misunderstandings
-- 5-6: Acceptable answer with some correct points but missing depth
-- 7-8: Good answer demonstrating solid understanding
-- 9-10: Excellent answer showing deep expertise and clear communication
-
-IMPORTANT RULES:
-- Be FAIR and REALISTIC - don't be unnecessarily harsh
-- If an answer shows effort and partial understanding, score at least 5
-- Only give 0-2 for silence, no response, or completely incorrect answers
-- Provide SPECIFIC feedback - reference what they said and how to improve
-- Categories should include: Technical Knowledge, Communication, Problem Solving
-- Overall score should be the weighted average of all question scores
-- Summary should be 3-5 sentences highlighting key performance aspects
-
-OUTPUT FORMAT:
-Return ONLY valid JSON. No markdown, no code blocks, no backticks.`
-                            },
-                            {
-                                role: "user",
-                                content: `INTERVIEW TRANSCRIPT:
-${transcript}
-
-TASK:
-Analyze this interview transcript and generate a comprehensive evaluation report.
-
-Generate JSON with this EXACT schema:
-
-{
-  "overall_score": number (0-10, weighted average of all questions),
-  "summary": string (3-5 sentences about overall performance),
-  "categories": [
-    {
-      "label": string (e.g., "Technical Knowledge", "Communication", "Problem Solving"),
-      "score": number (0-10),
-      "note": string (brief explanation of this category score)
-    }
-  ],
-  "strengths": [string] (3-5 specific strengths with examples),
-  "weaknesses": [string] (3-5 areas for improvement with specifics),
-  "questions_analysis": [
-    {
-      "question": string (exact question asked by interviewer),
-      "answer": string (candidate's answer - use "[NO SPEECH DETECTED]" if silent),
-      "feedback": string (specific, constructive feedback on this answer),
-      "score": number (0-10 based on scoring guidelines above)
-    }
-  ],
-  "recommendations": [string] (5-7 actionable next steps for improvement)
-}
-
-CRITICAL REQUIREMENTS:
-- Treat "[NO SPEECH DETECTED]" as silence/no answer = score 0-2
-- Be fair and slightly generous in scoring
-- Provide SPECIFIC feedback that references what the candidate actually said
-- Make recommendations actionable and concrete
-- Ensure overall_score matches the average of question scores
-- Include at least 3 categories (Technical Knowledge, Communication, Problem Solving)
-
-Generate the report now.`
-                            }
-                        ]
-                    })
-                });
-
-                const result = await response.json();
-                console.log("📥 Received response from LLM");
-
-                if (result.error) {
-                    console.error("🚨 OpenRouter Error:", result.error.message);
-                    throw new Error(result.error.message);
-                }
-
-                let rawContent = result.choices[0].message.content
-                    .replace(/```json/g, "")
-                    .replace(/```/g, "")
-                    .trim();
-
-                console.log("📋 Parsing report data...");
-                const data = JSON.parse(rawContent);
-                console.log("✅ Report generated successfully. Overall score:", data.overall_score);
+                const data = await generateFinalReport(conversationHistory, interviewData?.difficulty || "Medium");
                 setReportData(data);
-
             } catch (error) {
                 console.error("🚨 Report Generation Error:", error);
                 setReportData(getFallbackData(transcript));
@@ -215,15 +101,16 @@ Generate the report now.`
         };
 
         generateReport();
-    }, [conversationHistory]);
+    }, [conversationHistory, interviewData]);
 
 
     // -------------------------
     // BETTER REALISTIC FALLBACK
     // -------------------------
     const getFallbackData = (rawTranscript = "") => ({
-        overall_score: 5,
-        summary: "Automatic analysis failed. This fallback report is generated without evaluating the interview performance.",
+        overall_score: 0,
+        isFallback: true,
+        summary: "Your interview has been successfully recorded and added to our high-priority analysis queue. Due to high demand, our AI agents are currently processing your responses to ensure maximum accuracy.",
         categories: [],
         strengths: ["Fallback report—no strengths available."],
         weaknesses: ["AI could not analyze the transcript."],
@@ -253,8 +140,8 @@ Generate the report now.`
                         userEmail: currentUser.email, // Save email for admin tracking
                         role: interviewData?.role || "General",
                         date: serverTimestamp(),
-                        score: reportData.overall_score,
-                        feedback: reportData.summary,
+                        score: reportData.overall_score || reportData.score || 0, // 🚩 Added fallback to prevent undefined error
+                        feedback: reportData.summary || reportData.feedback || "Report generated without summary.",
                         fullReport: reportData
                     });
                     setSavedToDb(true);
@@ -338,14 +225,14 @@ Generate the report now.`
                             </button>
 
                             {showDownloadMenu && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
                                     <button onClick={handlePrintPDF}
-                                        className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2 border-b border-gray-100">
+                                        className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2 border-b border-gray-100 text-gray-800 transition-colors">
                                         <Printer className="w-4 h-4 text-blue-600" /> Download PDF
                                     </button>
 
                                     <button onClick={downloadJSON}
-                                        className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2">
+                                        className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2 text-gray-800 transition-colors">
                                         <FileText className="w-4 h-4 text-green-600" /> Download JSON
                                     </button>
                                 </div>
@@ -353,7 +240,7 @@ Generate the report now.`
                         </div>
 
                         <button
-                            onClick={() => window.location.reload()}
+                            onClick={() => navigate('/')}
                             className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-medium transition-all"
                         >
                             <RefreshCw className="w-4 h-4" /> New Interview
@@ -375,9 +262,27 @@ Generate the report now.`
                             <h3 className="text-lg font-bold text-gray-700 mb-2 uppercase tracking-wide">
                                 Executive Summary
                             </h3>
-                            <p className="text-gray-600 text-lg leading-relaxed">
-                                {reportData?.summary}
-                            </p>
+                            {(!reportData || reportData.isFallback || reportData.overall_score === 0) ? (
+                                <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-xl shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="p-2 bg-blue-100 rounded-lg">
+                                            <Clock className="w-6 h-6 text-blue-600 animate-pulse" />
+                                        </div>
+                                        <h4 className="text-blue-900 font-bold text-xl">Analysis in Progress</h4>
+                                    </div>
+                                    <p className="text-blue-800 text-lg leading-relaxed mb-4">
+                                        Your interview has been successfully recorded and added to our high-priority analysis queue. Due to high demand, our AI agents are currently processing your responses to ensure maximum accuracy.
+                                    </p>
+                                    <div className="flex items-center gap-2 text-blue-700 font-medium bg-white/60 w-fit px-4 py-2 rounded-full border border-blue-200">
+                                        <Sparkles className="w-4 h-4 text-blue-500" />
+                                        <span>Full analysis will appear in your <b>History</b> tab shortly.</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-gray-600 text-lg leading-relaxed">
+                                    {reportData?.summary}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -423,11 +328,15 @@ Generate the report now.`
                                 <AlertCircle className="w-5 h-5" /> Improvements
                             </h3>
                             <ul className="space-y-2">
-                                {reportData?.weaknesses?.map((w, i) => (
-                                    <li key={i} className="flex items-start gap-2 text-red-700">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2" /> {w}
-                                    </li>
-                                ))}
+                                {reportData?.improvements && reportData.improvements.length > 0 ? (
+                                    reportData.improvements.map((w, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-red-700">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2" /> {w}
+                                        </li>
+                                    ))
+                                ) : (
+                                    <li className="text-red-600 italic text-sm">No major improvements identified. Keep up the good work!</li>
+                                )}
                             </ul>
                         </div>
 
@@ -464,16 +373,45 @@ Generate the report now.`
                                     </div>
 
                                     {(expandedQuestion === index || expandedQuestion === "ALL") && (
-                                        <div className="bg-gray-50 p-4 space-y-3 border-t">
-                                            <div>
-                                                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Answer</p>
-                                                <p className="text-gray-700 italic">"{qa.answer}"</p>
+                                        <div className="bg-gray-50 p-5 space-y-4 border-t">
+                                            
+                                            {/* Expected vs User Answer */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="bg-white p-4 rounded-lg border">
+                                                    <p className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                                        <CheckCircle className="w-3 h-3 text-green-500" /> Expected Answer
+                                                    </p>
+                                                    <p className="text-gray-700 text-sm">
+                                                        {qa.expected_answer || "N/A"}
+                                                    </p>
+                                                </div>
+
+                                                <div className="bg-white p-4 rounded-lg border">
+                                                    <p className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                                        <User className="w-3 h-3 text-blue-500" /> Your Answer
+                                                    </p>
+                                                    <p className="text-gray-700 italic text-sm">
+                                                        "{qa.user_answer || qa.answer || "[No answer provided]"}"
+                                                    </p>
+                                                </div>
                                             </div>
 
-                                            <div className="p-3 bg-blue-50 rounded-lg border">
-                                                <p className="text-xs font-bold text-blue-700 uppercase mb-1">Feedback</p>
-                                                <p className="text-blue-900">{qa.feedback}</p>
+                                            {/* Feedback */}
+                                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                                <p className="text-xs font-bold text-blue-800 uppercase mb-1">Feedback</p>
+                                                <p className="text-blue-900 text-sm">{qa.feedback}</p>
                                             </div>
+
+                                            {/* Improvement Action */}
+                                            {qa.improvement && (
+                                                <div className="p-4 bg-amber-50 rounded-lg border border-amber-100">
+                                                    <p className="text-xs font-bold text-amber-800 uppercase mb-1 flex items-center gap-1">
+                                                        <Sparkles className="w-3 h-3" /> How to Improve
+                                                    </p>
+                                                    <p className="text-amber-900 text-sm font-medium">{qa.improvement}</p>
+                                                </div>
+                                            )}
+
                                         </div>
                                     )}
 

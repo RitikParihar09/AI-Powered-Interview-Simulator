@@ -13,6 +13,7 @@ import Categories from '../pages/Admin/Categories';
 import Companies from '../pages/Admin/Companies';
 import { Roles, Tags } from '../pages/Admin/RolesAndTags';
 import Settings from '../pages/Admin/Settings';
+import Presets from '../pages/Admin/Presets';
 import { useAuth } from '../context/AuthContext';
 
 const AdminRoute = ({ children }) => {
@@ -134,6 +135,11 @@ const AppRoutes = ({
             <Route path="/admin-panel/tags" element={
                 <AdminRoute>
                     <Tags />
+                </AdminRoute>
+            } />
+            <Route path="/admin-panel/presets" element={
+                <AdminRoute>
+                    <Presets />
                 </AdminRoute>
             } />
             <Route path="/admin-panel/settings" element={

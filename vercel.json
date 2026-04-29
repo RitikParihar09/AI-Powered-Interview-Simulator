@@ -1,5 +1,10 @@
 {
+{
   "rewrites": [
+    {
+      "source": "/api/aicredits/:match*",
+      "destination": "https://api.aicredits.in/:match*"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

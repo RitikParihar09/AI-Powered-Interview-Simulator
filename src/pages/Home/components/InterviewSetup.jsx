@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ResumeDropzone from './components/ResumeDropzone';
 import Button from '../../components/ui/Button';
 import { Briefcase, Building2, FileText, Clock, Play, AlertCircle, X, HelpCircle, Activity } from 'lucide-react';
+import { getCompanySuggestions, getRoleSuggestions } from '../../../services/llmService';
 
 const InterviewSetup = ({ onStart }) => {
     const [formData, setFormData] = useState({
@@ -13,11 +14,60 @@ const InterviewSetup = ({ onStart }) => {
         difficulty: 'Medium'
     });
     const [error, setError] = useState(null);
+    const [companySuggestions, setCompanySuggestions] = useState([]);
+    const [roleSuggestions, setRoleSuggestions] = useState([]);
+    const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
+    const [showRoleSuggestions, setShowRoleSuggestions] = useState(false);
+    
+    const suggestionsRef = useRef(null);
+    const roleSuggestionsRef = useRef(null);
+
+    // Close suggestions when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
+                setShowCompanySuggestions(false);
+            }
+            if (roleSuggestionsRef.current && !roleSuggestionsRef.current.contains(e.target)) {
+                setShowRoleSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const fetchCompanySuggestions = async (query) => {
+        const suggestions = await getCompanySuggestions(query);
+        setCompanySuggestions(suggestions);
+        setShowCompanySuggestions(suggestions.length > 0);
+    };
+
+    const fetchRoleSuggestions = async (query) => {
+        const suggestions = await getRoleSuggestions(query);
+        setRoleSuggestions(suggestions);
+        setShowRoleSuggestions(suggestions.length > 0);
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
         if (error) setError(null);
+
+        if (name === 'company') {
+            fetchCompanySuggestions(value);
+        } else if (name === 'role') {
+            fetchRoleSuggestions(value);
+        }
+    };
+
+    const handleSelectCompany = (company) => {
+        setFormData(prev => ({ ...prev, company }));
+        setShowCompanySuggestions(false);
+    };
+
+    const handleSelectRole = (role) => {
+        setFormData(prev => ({ ...prev, role }));
+        setShowRoleSuggestions(false);
     };
 
     const handleFileChange = (file) => {
@@ -98,22 +148,58 @@ const InterviewSetup = ({ onStart }) => {
                                 <label htmlFor="role" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                                     <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Target Role
                                 </label>
-                                <input
-                                    type="text" name="role" id="role" value={formData.role} onChange={handleInputChange}
-                                    className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium ${error && !formData.role ? 'border-amber-400 ring-2 ring-amber-100' : 'border-gray-200 dark:border-slate-700 hover:border-blue-300'}`}
-                                    placeholder="e.g., Full Stack Developer"
-                                />
+                                <div className="relative" ref={roleSuggestionsRef}>
+                                    <input
+                                        type="text" name="role" id="role" value={formData.role} onChange={handleInputChange}
+                                        onFocus={() => fetchRoleSuggestions(formData.role)}
+                                        autoComplete="off"
+                                        className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium ${error && !formData.role ? 'border-amber-400 ring-2 ring-amber-100' : 'border-gray-200 dark:border-slate-700 hover:border-blue-300'}`}
+                                        placeholder="e.g., Full Stack Developer"
+                                    />
+                                    {showRoleSuggestions && roleSuggestions.length > 0 && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto custom-scrollbar">
+                                            {roleSuggestions.map((role, index) => (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() => handleSelectRole(role)}
+                                                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-slate-700 last:border-b-0 font-medium"
+                                                >
+                                                    {role}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div>
                                 <label htmlFor="company" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                                     <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Target Company
                                 </label>
-                                <input
-                                    type="text" name="company" id="company" value={formData.company} onChange={handleInputChange}
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium hover:border-indigo-300"
-                                    placeholder="e.g., Google, Amazon"
-                                />
+                                <div className="relative" ref={suggestionsRef}>
+                                    <input
+                                        type="text" name="company" id="company" value={formData.company} onChange={handleInputChange}
+                                        onFocus={() => fetchCompanySuggestions(formData.company)}
+                                        autoComplete="off"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium hover:border-indigo-300"
+                                        placeholder="e.g., Google, Amazon"
+                                    />
+                                    {showCompanySuggestions && companySuggestions.length > 0 && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto custom-scrollbar">
+                                            {companySuggestions.map((company, index) => (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() => handleSelectCompany(company)}
+                                                    className="w-full text-left px-4 py-2.5 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-slate-700 last:border-b-0 font-medium"
+                                                >
+                                                    {company}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

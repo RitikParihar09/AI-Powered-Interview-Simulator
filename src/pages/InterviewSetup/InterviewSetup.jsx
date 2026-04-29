@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ResumeDropzone from './components/ResumeDropzone';
 import Button from '../../components/ui/Button';
 import { Briefcase, Building2, FileText, Clock, Play, AlertCircle, X, HelpCircle, Gauge } from 'lucide-react';
-import { getCompanySuggestions } from '../../services/llmService';
+import { getCompanySuggestions, getRoleSuggestions } from '../../services/llmService';
 
 const InterviewSetup = ({ onStart }) => {
     const [formData, setFormData] = useState({
@@ -11,18 +11,25 @@ const InterviewSetup = ({ onStart }) => {
         description: '',
         resume: null,
         duration: '15',
-        difficulty: 'Medium'
+        difficulty: 'Medium',
+        useQuestionBank: true
     });
     const [error, setError] = useState(null);
     const [companySuggestions, setCompanySuggestions] = useState([]);
-    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [roleSuggestions, setRoleSuggestions] = useState([]);
+    const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
+    const [showRoleSuggestions, setShowRoleSuggestions] = useState(false);
     const suggestionsRef = useRef(null);
+    const roleSuggestionsRef = useRef(null);
 
     // Close suggestions when clicking outside
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
-                setShowSuggestions(false);
+                setShowCompanySuggestions(false);
+            }
+            if (roleSuggestionsRef.current && !roleSuggestionsRef.current.contains(e.target)) {
+                setShowRoleSuggestions(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -31,14 +38,16 @@ const InterviewSetup = ({ onStart }) => {
 
     // Fetch company suggestions when company field changes
     const fetchCompanySuggestions = async (query) => {
-        if (query.trim().length === 0) {
-            setCompanySuggestions([]);
-            setShowSuggestions(false);
-            return;
-        }
         const suggestions = await getCompanySuggestions(query);
         setCompanySuggestions(suggestions);
-        setShowSuggestions(suggestions.length > 0);
+        setShowCompanySuggestions(suggestions.length > 0);
+    };
+
+    // Fetch role suggestions when role field changes
+    const fetchRoleSuggestions = async (query) => {
+        const suggestions = await getRoleSuggestions(query);
+        setRoleSuggestions(suggestions);
+        setShowRoleSuggestions(suggestions.length > 0);
     };
 
     const handleInputChange = (e) => {
@@ -46,15 +55,22 @@ const InterviewSetup = ({ onStart }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
         if (error) setError(null);
 
-        // Fetch company suggestions when company field changes
+        // Fetch suggestions when fields change
         if (name === 'company') {
             fetchCompanySuggestions(value);
+        } else if (name === 'role') {
+            fetchRoleSuggestions(value);
         }
     };
 
     const handleSelectCompany = (company) => {
         setFormData(prev => ({ ...prev, company }));
-        setShowSuggestions(false);
+        setShowCompanySuggestions(false);
+    };
+
+    const handleSelectRole = (role) => {
+        setFormData(prev => ({ ...prev, role }));
+        setShowRoleSuggestions(false);
     };
 
     const handleFileChange = (file) => {
@@ -68,11 +84,11 @@ const InterviewSetup = ({ onStart }) => {
             setError("Please provide a Target Role or Job Description to initialize system.");
             return;
         }
-        onStart(formData);
+        onStart({ ...formData, useQuestionBank: true });
     };
 
     return (
-        <div className="w-full max-w-5xl mx-auto rounded-[2rem] p-[3px] bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 shadow-2xl shadow-blue-900/20 relative mt-8">
+        <div id="interview-setup-form" className="w-full max-w-5xl mx-auto rounded-[2rem] p-[3px] bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 shadow-2xl shadow-blue-900/20 relative mt-8">
             {/* VALIDATION MODAL (Replaces toast) */}
             {error && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300 p-4">
@@ -135,11 +151,31 @@ const InterviewSetup = ({ onStart }) => {
                                 <label htmlFor="role" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                                     <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Target Role
                                 </label>
-                                <input
-                                    type="text" name="role" id="role" value={formData.role} onChange={handleInputChange}
-                                    className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium ${error && !formData.role ? 'border-amber-400 ring-2 ring-amber-100' : 'border-gray-200 dark:border-slate-700 hover:border-blue-300'}`}
-                                    placeholder="e.g., Full Stack Developer"
-                                />
+                                <div className="relative" ref={roleSuggestionsRef}>
+                                    <input
+                                        type="text" name="role" id="role" value={formData.role} onChange={handleInputChange}
+                                        onFocus={() => fetchRoleSuggestions(formData.role)}
+                                        autoComplete="off"
+                                        className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium ${error && !formData.role ? 'border-amber-400 ring-2 ring-amber-100' : 'border-gray-200 dark:border-slate-700 hover:border-blue-300'}`}
+                                        placeholder="e.g., Full Stack Developer"
+                                    />
+
+                                    {/* Role Suggestions Dropdown */}
+                                    {showRoleSuggestions && roleSuggestions.length > 0 && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto">
+                                            {roleSuggestions.map((role, index) => (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() => handleSelectRole(role)}
+                                                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-slate-700 last:border-b-0 font-medium flex items-center gap-2"
+                                                >
+                                                    {role}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div>
@@ -149,13 +185,14 @@ const InterviewSetup = ({ onStart }) => {
                                 <div className="relative" ref={suggestionsRef}>
                                     <input
                                         type="text" name="company" id="company" value={formData.company} onChange={handleInputChange}
-                                        onFocus={() => formData.company && setShowSuggestions(true)}
+                                        onFocus={() => fetchCompanySuggestions(formData.company)}
+                                        autoComplete="off"
                                         className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium hover:border-indigo-300"
                                         placeholder="e.g., Google, Amazon"
                                     />
                                     
-                                    {/* Suggestions Dropdown */}
-                                    {showSuggestions && companySuggestions.length > 0 && (
+                                    {/* Company Suggestions Dropdown */}
+                                    {showCompanySuggestions && companySuggestions.length > 0 && (
                                         <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto">
                                             {companySuggestions.map((company, index) => (
                                                 <button
@@ -164,7 +201,6 @@ const InterviewSetup = ({ onStart }) => {
                                                     onClick={() => handleSelectCompany(company)}
                                                     className="w-full text-left px-4 py-2.5 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors text-gray-800 dark:text-gray-100 border-b border-gray-100 dark:border-slate-700 last:border-b-0 font-medium flex items-center gap-2"
                                                 >
-                                                    <Building2 className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                                                     {company}
                                                 </button>
                                             ))}

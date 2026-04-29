@@ -1,5 +1,5 @@
 import React from 'react';
-import { collection, query, onSnapshot, collectionGroup, orderBy, limit } from 'firebase/firestore';
+import { collection, query, onSnapshot, collectionGroup, orderBy, limit, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import AdminLayout from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,7 +11,8 @@ import {
     UserCircle, 
     Tag,
     Calendar,
-    TrendingUp
+    TrendingUp,
+    RefreshCw
 } from 'lucide-react';
 
 const DifficultyPieChart = ({ questions }) => {
@@ -232,7 +233,6 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">

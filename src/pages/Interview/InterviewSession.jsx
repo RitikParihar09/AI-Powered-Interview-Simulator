@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Mic, MicOff, PhoneOff, Video, VideoOff, Send, Keyboard, Loader2, Play, Clock, Briefcase, User, Sparkles, Sun, Moon } from 'lucide-react';
-import { getInitialQuestion, getNextQuestion, parseResumeText, getQuestionBankQuestions } from '../../services/llmService';
+import { getInitialQuestion, getNextQuestion, parseResumeText, getQuestionBankQuestions, generateFollowUpQuestions, parseResumeToJSON, generateResumeBasedQuestions } from '../../services/llmService';
 import aiImg from '../../assets/ai.png';
 import Timer from './components/Timer';
 import AIOrb from './components/AIOrb';
@@ -15,10 +15,12 @@ const DEEPGRAM_API_KEY = import.meta.env.VITE_DEEPGRAM_API_KEY;
 
 const InterviewSession = ({ interviewData, onEndInterview }) => {
     // --- State ---
-    const [currentQuestion, setCurrentQuestion] = useState("Connecting to AI Interviewer...");
     const [isSessionActive, setIsSessionActive] = useState(false);
-    const [history, setHistory] = useState([]);
     const [isFinished, setIsFinished] = useState(false);
+    const [history, setHistory] = useState([]);
+    const [currentQuestion, setCurrentQuestion] = useState("");
+    const [displayedQuestion, setDisplayedQuestion] = useState(""); // 🚀 For Typewriter effect
+    const [currentQuestionData, setCurrentQuestionData] = useState(null);
 
     // Question Bank State
     const [questionBankQuestions, setQuestionBankQuestions] = useState([]);
@@ -36,23 +38,76 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     const [textInput, setTextInput] = useState("");
     const [showEndConfirmation, setShowEndConfirmation] = useState(false);
 
+    // Data State
+    const [transcript, setTranscript] = useState("");
+    const [interimTranscript, setInterimTranscript] = useState(""); // 🚀 Added back
+    const [resumeText, setResumeText] = useState(null); // 🚀 Added back
+    const [questionQueue, setQuestionQueue] = useState([]);
+    const [status, setStatus] = useState("Initializing...");
+    
+    // 🚀 NEW: Background Preparation State
+    const [isPreparing, setIsPreparing] = useState(true);
+    const [preparedQueue, setPreparedQueue] = useState([]);
+    const [apiCallCount, setApiCallCount] = useState(0);
+    const [dbQuestionCount, setDbQuestionCount] = useState(0);
+    const [isIntro, setIsIntro] = useState(false); // 🚀 Track if we are in greeting phase
+    
+    // ⏱️ SESSION LIMITS BASED ON DURATION
+    const getSessionLimits = () => {
+        const mins = parseInt(interviewData?.duration || '15');
+        if (mins <= 15) return { maxDb: 3, maxAi: 2 };
+        if (mins <= 30) return { maxDb: 6, maxAi: 3 };
+        if (mins <= 45) return { maxDb: 8, maxAi: 4 };
+        return { maxDb: 10, maxAi: 5 };
+    };
+    const limits = getSessionLimits();
+
+    // Debugging Helper
+    const logQueue = (stage, queueData) => {
+        const targetQueue = queueData || questionQueue;
+        if (!targetQueue || !Array.isArray(targetQueue)) {
+            console.log(`📦 QUEUE STATE (${stage}): Empty or invalid`);
+            return;
+        }
+        console.log(`📦 QUEUE STATE (${stage})`);
+        console.table(targetQueue.map((q, i) => ({
+            index: i,
+            question: q.question || (typeof q === 'string' ? q : 'Complex Object')
+        })));
+    };
+
     // ==========================================
-    // 0. PREVENT REFRESH / ACCIDENTAL NAVIGATION
+    // 0. PREVENT REFRESH / ACCIDENTAL NAVIGATION (Only during active session)
     // ==========================================
     useEffect(() => {
         const handleBeforeUnload = (e) => {
-            e.preventDefault();
-            e.returnValue = ''; // Required for most browsers
+            if (isSessionActive && !isFinished) { // 🚩 Only warn if session is active
+                e.preventDefault();
+                e.returnValue = ''; 
+            }
         };
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, []);
 
-    // Data State
-    const [transcript, setTranscript] = useState("");
-    const [interimTranscript, setInterimTranscript] = useState("");
-    const [status, setStatus] = useState("Ready");
-    const [resumeText, setResumeText] = useState(null); // Store parsed resume text
+        const handlePopState = (e) => {
+            if (isSessionActive && !isFinished) {
+                if (!window.confirm("An interview is in progress. Are you sure you want to leave? Your progress will be lost.")) {
+                    window.history.pushState(null, "", window.location.href);
+                }
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('popstate', handlePopState);
+        
+        // Push state for popstate detection
+        if (isSessionActive && !isFinished) {
+            window.history.pushState(null, "", window.location.href);
+        }
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [isSessionActive, isFinished]);
 
     // Auto-scroll refs
     const answerRef = useRef(null);
@@ -66,11 +121,13 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     const { theme, toggleTheme } = useTheme();
 
     // --- Refs ---
+    const hasStartedFetch = useRef(false);
     const mediaRecorderRef = useRef(null);
     const socketRef = useRef(null);
     const videoRef = useRef(null);
     const audioRef = useRef(null);
     const isEndedRef = useRef(false);
+    const isProcessingRef = useRef(false); // 🚩 ADDED THIS
     const timeLeftRef = useRef(900); // Default to 15 mins (900s)
 
     // --- VAD Refs ---
@@ -137,11 +194,21 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     const resetSilenceTimer = () => {
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
-        // "Smart VAD": Wait 5 seconds. If no new speech, auto-submit.
+        // 🚩 GUARD: Don't track silence if the AI is still talking
+        if (isAiSpeaking) return;
+
+        // "Smart VAD": Wait 10 seconds. If no new speech, auto-submit.
         silenceTimerRef.current = setTimeout(() => {
             performAutoSubmit();
         }, 10000);
     };
+
+    // Trigger silence timer start/reset when AI finishes speaking
+    useEffect(() => {
+        if (!isAiSpeaking && isListening) {
+            resetSilenceTimer();
+        }
+    }, [isAiSpeaking, isListening]);
 
     // ==========================================
     // 4. DEEPGRAM STT & TTS
@@ -218,6 +285,34 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
         setIsListening(false);
     };
 
+    // 🚀 NEW: Typewriter Effect Watcher (Stable Substring Version)
+    useEffect(() => {
+        if (!currentQuestion) {
+            setDisplayedQuestion("");
+            return;
+        }
+        
+        // Skip typewriter for intro
+        if (isIntro) {
+            setDisplayedQuestion(currentQuestion);
+            return;
+        }
+
+        let index = 0;
+        setDisplayedQuestion("");
+        
+        const interval = setInterval(() => {
+            index++;
+            if (index <= currentQuestion.length) {
+                setDisplayedQuestion(currentQuestion.substring(0, index));
+            } else {
+                clearInterval(interval);
+            }
+        }, 30);
+
+        return () => clearInterval(interval);
+    }, [currentQuestion, isIntro]);
+
     const toggleMic = () => {
         if (isListening) {
             stopDeepgram();
@@ -234,7 +329,7 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
         }
     };
 
-    const speak = async (text) => {
+    const speak = async (text, onEnded = null) => { // 🚀 Added onEnded callback
         if (!text || isEndedRef.current) return;
         stopDeepgram();
         if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
@@ -243,7 +338,7 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
         setIsAiSpeaking(true);
 
         try {
-            const response = await fetch('https://api.deepgram.com/v1/speak?model=aura-2-draco-en', {
+            const response = await fetch('https://api.deepgram.com/v1/speak?model=aura-asteria-en', { // ⚡ Fast model
                 method: 'POST',
                 headers: { 'Authorization': `Token ${DEEPGRAM_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text })
@@ -253,13 +348,20 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
             if (!response.ok) throw new Error("TTS Failed");
 
             const blob = await response.blob();
-            const audio = new Audio(URL.createObjectURL(blob));
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
             audioRef.current = audio;
 
             audio.onended = () => {
                 if (isEndedRef.current) return;
                 setIsAiSpeaking(false);
                 setStatus("Ready.");
+
+                // 🚀 Execute callback if provided
+                if (onEnded) {
+                    onEnded();
+                    return;
+                }
 
                 // IF TIME IS UP, DON'T RESTART LISTENING
                 if (timeLeftRef.current <= 0) {
@@ -283,8 +385,83 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     };
 
     // ==========================================
-    // 5. INTERVIEW LOGIC
+    // 5. AI CALL CONTROL
     // ==========================================
+    const maybeGenerateFollowups = async (question, answer, tags = []) => {
+        const keywords = ["react", "hooks", "state", "api", "async", "javascript", "css", "html", "node", "firebase", "database", "sql"];
+        const detected = keywords.filter(k => answer.toLowerCase().includes(k));
+        
+        console.log("🧠 Keywords Detected:", detected);
+        if (answer.length < 15 && detected.length === 0) return [];
+
+        if (apiCallCount >= 5) {
+            console.log("🚫 AI API LIMIT REACHED");
+            return [];
+        }
+
+        try {
+            const followups = await generateFollowUpQuestions(question, answer, tags);
+            return followups;
+        } catch (error) {
+            console.error("Failed to generate follow-ups", error);
+            return [];
+        }
+    };
+
+    // ==========================================
+    // 6. INTERVIEW LOGIC
+    // ==========================================
+
+    // ==========================================
+    // 🚀 BACKGROUND PREPARATION (Pre-fetch while user is on start screen)
+    // ==========================================
+    useEffect(() => {
+        const prepareInterviewData = async () => {
+            if (hasStartedFetch.current) return;
+            hasStartedFetch.current = true;
+            setIsPreparing(true);
+            console.log("🧠 Background Preparation Started...");
+
+            let resumeQuestions = [];
+            let dbQuestions = [];
+
+            // 1. Parse Resume
+            if (interviewData?.resume) {
+                try {
+                    const rawResume = await parseResumeText(interviewData.resume);
+                    const structuredResume = await parseResumeToJSON(rawResume);
+                    
+                    // ⏳ Small delay to prevent API "burst" rate limiting (429)
+                    await new Promise(r => setTimeout(r, 1000)); 
+
+                    resumeQuestions = await generateResumeBasedQuestions(
+                        structuredResume,
+                        interviewData?.role || "Developer",
+                        interviewData?.company || "Target Company"
+                    );
+                } catch (err) { console.error("Resume pre-fetch failed:", err); }
+            }
+
+            // 2. Fetch DB Questions
+            try {
+                const bankQuestions = await getQuestionBankQuestions(
+                    interviewData?.company,
+                    interviewData?.role,
+                    interviewData?.difficulty || "Medium"
+                );
+                if (bankQuestions?.length > 0) {
+                    dbQuestions = [...bankQuestions].sort(() => 0.5 - Math.random()).slice(0, limits.maxDb);
+                }
+            } catch (err) { console.error("DB pre-fetch failed:", err); }
+
+            const combined = [...resumeQuestions, ...dbQuestions];
+            setPreparedQueue(combined);
+            setIsPreparing(false);
+            console.log(`✅ Preparation Complete. ${combined.length} questions ready.`);
+        };
+
+        prepareInterviewData();
+    }, [interviewData]);
 
     useEffect(() => {
         const startWebcam = async () => {
@@ -297,120 +474,167 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
     }, [isSessionActive, isVideoOn, isFinished]);
 
     const startSession = async () => {
+        console.log("🚀 INTERVIEW STARTING...");
         isEndedRef.current = false;
-        setIsSessionActive(true); // 🟢 DIRECT START: No countdown
-        setFollowUpCount(0); // Reset follow-up count for new session
+        setIsSessionActive(true); 
+        setApiCallCount(0);
+        setDbQuestionCount(0);
+        
+        // 1. USE PREPARED QUEUE
+        const queueToUse = preparedQueue.length > 0 ? [...preparedQueue] : [];
+        setQuestionQueue(queueToUse);
 
-        // Parse resume if provided
-        let parsedResumeText = null;
-        if (interviewData?.resume) {
-            console.log("📄 Parsing resume...");
-            parsedResumeText = await parseResumeText(interviewData.resume);
-            setResumeText(parsedResumeText);
-        }
-
-        // Fetch question bank questions if enabled
-        if (interviewData?.useQuestionBank) {
-            console.log("🏦 Fetching question bank questions...");
-            const bankQuestions = await getQuestionBankQuestions(
-                interviewData?.company,
-                interviewData?.role,
-                interviewData?.difficulty || "Medium"
-            );
-            if (bankQuestions.length > 0) {
-                setQuestionBankQuestions(bankQuestions);
-                setQuestionBankIndex(0);
-                console.log(`✅ Loaded ${bankQuestions.length} questions from question bank`);
-            } else {
-                console.log("⚠️ No questions found in bank. Will use AI generation.");
-            }
-        }
-
+        // 2. GET OPENING QUESTION & START WITH GREETING
         try {
-            const q = await getInitialQuestion(
-                interviewData?.role || "Developer", 
-                parsedResumeText,
-                interviewData?.difficulty || "Medium"
-            );
-            if (isEndedRef.current) return;
-            setCurrentQuestion(q);
-            setHistory([{ role: "model", parts: [{ text: q }] }]);
-            speak(q);
+            const queueCopy = [...queueToUse];
+            const firstData = queueCopy.shift(); 
+            setQuestionQueue(queueCopy);
+            
+            const firstQuestionText = firstData ? (firstData.question || firstData) : "Tell me about yourself.";
+            
+            // 🎙️ STEP 1: GREETING (Static)
+            const candidateName = currentUser?.displayName?.split(' ')[0] || "there";
+            const greeting = `Hi ${candidateName}, I'm Echo, your AI interviewer. Today's interview is for the ${interviewData?.role || 'Developer'} role. I'll be asking you a series of questions and may follow up based on your answers. Feel free to take a moment before answering. Let's begin.`;
+            
+            setIsIntro(true);
+            setCurrentQuestion(greeting);
+            
+            // 🎙️ STEP 2: SPEAK GREETING -> THEN FIRST QUESTION
+            speak(greeting, () => {
+                // This runs when greeting audio ends
+                setIsIntro(false); // Enable typewriter for questions
+                const firstQuestionText = firstData ? (firstData.question || firstData) : "Tell me about yourself.";
+                
+                setHistory([{ 
+                    role: "model", 
+                    parts: [{ text: greeting + " " + firstQuestionText }],
+                    expectedAnswer: firstData?.expectedAnswer || "General introduction."
+                }]);
+
+                setCurrentQuestion(firstQuestionText);
+                setCurrentQuestionData(firstData || { question: firstQuestionText, source: 'ai' });
+                speak(firstQuestionText);
+                setStatus("Ready");
+            });
+
         } catch (e) {
-            const f = "Tell me about yourself.";
-            if (!isEndedRef.current) { setCurrentQuestion(f); speak(f); }
+            const fallback = "Hi, I'm Echo. Let's start with your background. Tell me about yourself.";
+            setIsIntro(false);
+            setCurrentQuestion(fallback);
+            speak(fallback);
         }
     };
 
     const handleUserAnswer = async (answer) => {
-        if (!answer.trim() || isEndedRef.current) return;
+        if (!answer.trim() || isProcessingRef.current || isEndedRef.current) return;
+        isProcessingRef.current = true;
         setStatus("Thinking...");
-        setTranscript("");
-        setInterimTranscript("");
-        setTextInput("");
 
-        const updatedHistory = [...history, { role: "user", parts: [{ text: answer }] }];
+        // 1. Update History with context
+        const currentMeta = {
+            question: currentQuestion,
+            expectedAnswer: currentQuestionData?.expectedAnswer || currentQuestionData?.answer || "N/A",
+            source: currentQuestionData?.source || (currentQuestionData?.id ? 'database' : 'ai')
+        };
+
+        const updatedHistory = [...history, { 
+            role: "user", 
+            parts: [{ text: answer }],
+            meta: currentMeta
+        }];
         setHistory(updatedHistory);
 
-        // CHECK TIME LEFT (e.g. less than 40s)
-        if (timeLeftRef.current < 40) {
-            const closingRemark = "We are reaching the end of our time. Thank you for your responses. Let's conclude the interview now.";
-            setCurrentQuestion(closingRemark);
-            speak(closingRemark);
-            return;
+        let nextQData = null;
+
+        // 2. 🧠 HYBRID FLOW: Dynamic Refill & Injection
+        // A. Check for pre-generated batch follow-up
+        if (currentQuestionData?.followUp && answer.length > 40) {
+            console.log("💉 Injecting pre-generated batch follow-up...");
+            nextQData = { ...currentQuestionData.followUp, source: 'ai_batch' };
+            // 🚩 FIX: Do NOT push to queue, because we are asking it RIGHT NOW.
+        } 
+        // B. Real-time AI Follow-up fallback
+        else if (apiCallCount < limits.maxAi && dbQuestionCount % 2 === 0 && answer.length > 40) {
+            try {
+                console.log(`🤖 Requesting Real-time AI Follow-up...`);
+                const followups = await maybeGenerateFollowups(currentQuestion, answer);
+                if (followups && followups.length > 0) {
+                    nextQData = { ...followups[0], source: 'ai_realtime' };
+                    
+                    // 🚩 FIX: Only push to queue if there is MORE than 1 follow-up generated
+                    if (followups.length > 1) {
+                        const rest = followups.slice(1).map(f => ({ ...f, source: 'ai_realtime' }));
+                        setQuestionQueue(prev => [...rest, ...prev]);
+                    }
+                    
+                    setApiCallCount(prev => prev + 1);
+                }
+            } catch (err) { console.warn("AI Follow-up failed", err); }
         }
 
-        let nextQ = null;
-
-        // TRY TO USE QUESTION BANK QUESTIONS FIRST
-        if (interviewData?.useQuestionBank && questionBankIndex < questionBankQuestions.length) {
-            const currentBankQuestion = questionBankQuestions[questionBankIndex];
-            nextQ = currentBankQuestion.question || currentBankQuestion.text;
-            setQuestionBankIndex(prev => prev + 1);
-            console.log(`📋 Using question bank question ${questionBankIndex + 1}/${questionBankQuestions.length}`);
-            // Reset follow-up count when moving to next question bank question
-            setFollowUpCount(0);
-        } else if (questionBankIndex >= questionBankQuestions.length && questionBankQuestions.length > 0) {
-            console.log("✅ Question bank exhausted. Switching to AI-generated questions.");
+        // 3. 🔄 DYNAMIC REFILL: If queue is getting low, fetch more from DB
+        if (questionQueue.length < 2 && !isEndedRef.current) {
+            console.log("🔄 Queue low. Refilling from DB...");
+            try {
+                const moreQuestions = await getQuestionBankQuestions(
+                    interviewData?.company,
+                    interviewData?.role,
+                    interviewData?.difficulty || "Medium"
+                );
+                if (moreQuestions.length > 0) {
+                    // 🚩 FIX: Filter out questions already in history OR already in the queue
+                    const freshOnes = moreQuestions.filter(q => 
+                        !updatedHistory.some(h => h.meta?.question === q.question) &&
+                        !questionQueue.some(qq => qq.question === q.question)
+                    ).slice(0, 3);
+                    
+                    if (freshOnes.length > 0) {
+                        setQuestionQueue(prev => [...prev, ...freshOnes]);
+                        console.log(`✅ Refilled with ${freshOnes.length} FRESH DB questions.`);
+                    }
+                }
+            } catch (err) { console.error("Refill failed", err); }
         }
 
-        // FALLBACK TO AI IF NO BANK QUESTIONS OR EXHAUSTED
-        if (!nextQ) {
-            // Increment follow-up count for resume-based interviews
-            const isResumeBasedInterview = resumeText && !interviewData?.useQuestionBank;
-            let shouldForceTopicChange = false;
-
-            if (isResumeBasedInterview) {
-                const newFollowUpCount = followUpCount + 1;
-                setFollowUpCount(newFollowUpCount);
-
-                // Force topic change after 3 follow-ups
-                if (newFollowUpCount >= 3) {
-                    shouldForceTopicChange = true;
-                    setFollowUpCount(0); // Reset for next topic
-                    console.log("🔄 Max follow-ups reached. Forcing AI to switch to new topic.");
+        // 4. 🎯 SELECTION: Pick the next question from queue
+        if (!nextQData) {
+            if (questionQueue.length > 0) {
+                const remaining = [...questionQueue];
+                nextQData = remaining.shift();
+                setQuestionQueue(remaining);
+                setDbQuestionCount(prev => prev + 1);
+                logQueue("NEXT QUESTION (POPPED)", remaining);
+            } 
+            else {
+                // 🔴 ABSOLUTE FALLBACK: AI-generated next question
+                console.log("🪹 Queue empty. Generating AI fallback...");
+                try {
+                    const aiNext = await getNextQuestion({
+                        lastAnswer: answer,
+                        history: updatedHistory,
+                        difficulty: interviewData?.difficulty || "Medium"
+                    });
+                    nextQData = { question: aiNext, source: 'ai_fallback' };
+                } catch (e) {
+                    console.log("🏁 All fallbacks failed. Ending session.");
+                    finishSession();
+                    isProcessingRef.current = false;
+                    return;
                 }
             }
-
-            try {
-                nextQ = await getNextQuestion({
-                    lastQuestion: currentQuestion,
-                    lastAnswer: answer,
-                    history: updatedHistory,
-                    resumeText: resumeText,
-                    difficulty: interviewData?.difficulty || "Medium",
-                    forceTopicChange: shouldForceTopicChange
-                });
-            } catch (e) {
-                if (!isEndedRef.current) setStatus("Error fetching question.");
-                return;
-            }
         }
 
-        if (isEndedRef.current) return;
-        setCurrentQuestion(nextQ);
-        setHistory(prev => [...prev, { role: "model", parts: [{ text: nextQ }] }]);
-        speak(nextQ);
+        // 5. Update State & Speak
+        if (nextQData) {
+            const nextQText = typeof nextQData === 'string' ? nextQData : nextQData.question;
+            setCurrentQuestion(nextQText);
+            setCurrentQuestionData(nextQData);
+            setHistory(prev => [...prev, { role: "model", parts: [{ text: nextQText }] }]);
+            speak(nextQText);
+            setStatus("Ready");
+        }
+
+        isProcessingRef.current = false;
     };
 
     // ==========================================
@@ -426,6 +650,7 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
                 interviewData={interviewData}
                 candidateName={candidateName}
                 onStart={startSession}
+                isPreparing={isPreparing}
             />
         );
     }
@@ -503,9 +728,9 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
                                 </div>
                                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0">
                                     <div className="flex items-center justify-center py-2">
-                                        <p className="text-base md:text-lg text-gray-900 dark:text-white font-semibold leading-relaxed text-center animate-in fade-in duration-500">
-                                            {currentQuestion}
-                                        </p>
+                                        <div className="text-gray-900 dark:text-white text-lg md:text-xl font-medium leading-relaxed max-h-[250px] overflow-y-auto pr-4 custom-scrollbar">
+                                            {displayedQuestion || "Waiting for Echo..."}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

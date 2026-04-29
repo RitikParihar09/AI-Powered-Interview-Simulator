@@ -7,4 +7,13 @@ export default defineConfig({
   define: {
     global: 'window', 
   },
+  server: {
+    proxy: {
+      '/api/aicredits': {
+        target: 'https://api.aicredits.in',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/aicredits/, '')
+      }
+    }
+  }
 })

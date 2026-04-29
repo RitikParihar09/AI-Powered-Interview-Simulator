@@ -13,7 +13,8 @@ import {
     LogOut,
     ChevronDown,
     Sun,
-    Moon
+    Moon,
+    Layout
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -40,6 +41,7 @@ const AdminLayout = ({ children }) => {
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/admin-panel/dashboard' },
+        { icon: Layout, label: 'Presets', path: '/admin-panel/presets' },
         { icon: BookOpen, label: 'Question Bank', path: '/admin-panel/questions' },
         { icon: Building2, label: 'Companies', path: '/admin-panel/companies' },
         { icon: UserCircle, label: 'Roles', path: '/admin-panel/roles' },
