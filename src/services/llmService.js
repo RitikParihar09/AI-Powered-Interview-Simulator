@@ -2,7 +2,7 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 import { db } from '../firebase/firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc, getDocs } from 'firebase/firestore';
 
 // Configure PDF.js worker - use local package instead of CDN
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -270,19 +270,18 @@ const safeParseJSON = (text) => {
   try {
     // 1. Try direct parse
     return JSON.parse(text);
-  } catch (e) {
+  } catch {
     try {
       // 2. Try cleaning markdown backticks
       const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
       return JSON.parse(cleaned);
-    } catch (e2) {
+    } catch {
       // 3. Last resort: Extract anything between the first { and last }
       const match = text.match(/\{[\s\S]*\}/);
       if (match) {
         try {
           return JSON.parse(match[0]);
-        } catch (e3) {
-          console.error("Final JSON parse attempt failed", e3);
+        } catch {
           return null;
         }
       }

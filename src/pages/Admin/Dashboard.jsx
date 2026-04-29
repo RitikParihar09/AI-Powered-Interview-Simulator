@@ -1,5 +1,5 @@
 import React from 'react';
-import { collection, query, onSnapshot, collectionGroup, orderBy, limit, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, collectionGroup, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import AdminLayout from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,8 +11,7 @@ import {
     UserCircle, 
     Tag,
     Calendar,
-    TrendingUp,
-    RefreshCw
+    TrendingUp
 } from 'lucide-react';
 
 const DifficultyPieChart = ({ questions }) => {

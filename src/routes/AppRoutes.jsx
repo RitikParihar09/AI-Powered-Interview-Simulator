@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import InterviewSession from '../pages/Interview/InterviewSession';

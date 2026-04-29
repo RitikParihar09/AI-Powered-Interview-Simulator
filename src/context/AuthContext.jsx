@@ -11,11 +11,10 @@ import { doc, setDoc, getDoc, serverTimestamp, onSnapshot } from "firebase/fires
 
 const AuthContext = createContext();
 
-export function useAuth() {
-    return useContext(AuthContext);
-}
+const PRIMARY_ADMIN = 'ritikparihar2040@gmail.com';
+export { PRIMARY_ADMIN };
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [configLoading, setConfigLoading] = useState(true);
