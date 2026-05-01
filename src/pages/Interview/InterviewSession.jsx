@@ -707,14 +707,14 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
             <div className="h-screen flex flex-col">
 
                 {/* AI ORB SECTION - TOP CENTER */}
-                <div className="w-full flex items-center justify-center pt-8 pb-4 shrink-0 relative z-20">
-                    <div className="w-40 h-40 flex items-center justify-center scale-[1.8]">
+                <div className="w-full flex items-center justify-center py-4 shrink-0 relative z-20">
+                    <div className="w-48 h-48 flex items-center justify-center scale-[1.5]">
                         <AIOrb isSpeaking={isAiSpeaking} isListening={isListening} />
                     </div>
                 </div>
 
                 {/* CONVERSATION CARDS SECTION - MIDDLE CENTER */}
-                <div className="flex-1 w-full flex items-center justify-center px-6 pb-32 mt-32">
+                <div className="flex-1 w-full flex items-center justify-center px-6 pb-32 mt-4">
                     {/* SIDE-BY-SIDE CONVERSATION CARDS */}
                     <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
 
