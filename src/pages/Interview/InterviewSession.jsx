@@ -707,7 +707,7 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
             <div className="h-screen flex flex-col">
 
                 {/* AI ORB SECTION - TOP CENTER */}
-                <div className="w-full flex items-center justify-center pt-2 pb-4 shrink-0 -mt-[47px] relative top-[-160px] z-20">
+                <div className="w-full flex items-center justify-center pt-8 pb-4 shrink-0 relative z-20">
                     <div className="w-40 h-40 flex items-center justify-center scale-[1.8]">
                         <AIOrb isSpeaking={isAiSpeaking} isListening={isListening} />
                     </div>
