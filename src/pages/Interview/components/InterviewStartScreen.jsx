@@ -431,19 +431,9 @@ const InterviewStartScreen = ({ interviewData, candidateName, onStart, isPrepari
                 </div>
 
                 {/* RIGHT PANEL: HERO & PREVIEW (7 cols) */}
-                <div className="col-span-1 lg:col-span-7 flex flex-col items-center justify-center relative min-h-[80vh]">
-                    {/* ORB - Absolutely positioned at the top of the panel to avoid overlap */}
-                    {!isSystemReady && (
-                        <div className="absolute top-12 left-1/2 -translate-x-1/2 pointer-events-none z-0">
-                            <div className="absolute w-[350px] h-[350px] rounded-full bg-blue-500/10 blur-[100px] animate-pulse"></div>
-                            <div className="w-[280px] h-[280px] relative">
-                                <AIOrb isSpeaking={true} />
-                            </div>
-                        </div>
-                    )}
-
+                <div className={`col-span-1 lg:col-span-7 flex flex-col items-center relative min-h-[80vh] ${!isSystemReady ? 'justify-start pt-12' : 'justify-center'}`}>
                     {!isSystemReady ? (
-                        <div className="w-full max-w-2xl text-center flex flex-col items-center justify-center gap-6 relative z-10 transform -translate-y-40">
+                        <div className="w-full max-w-2xl text-center flex flex-col items-center justify-center gap-6 relative z-10">
                             <span className="text-xl md:text-2xl text-indigo-400 font-semibold">
                                 Meet
                             </span>
@@ -467,13 +457,21 @@ const InterviewStartScreen = ({ interviewData, candidateName, onStart, isPrepari
                                 <br />
                                 answers, and helping you perform your best.
                             </p>
+
+                            {/* ORB - Moved into flow to avoid overlap across environments */}
+                            <div className="relative -mt-80">
+                                <div className="absolute inset-0 w-[400px] h-[400px] -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 bg-blue-500/10 blur-[100px] animate-pulse pointer-events-none"></div>
+                                <div className="w-[240px] h-[240px] relative transform scale-150">
+                                    <AIOrb isSpeaking={true} />
+                                </div>
+                            </div>
                         </div>
 
 
                     ) : (
 
                         // ===================== READY STATE (VIDEO) =====================
-                        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col gap-6 items-center">
+                        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col gap-6 items-center transform -translate-y-8">
 
                             {/* VIDEO */}
                             <div className="relative w-full aspect-video bg-gray-900 dark:bg-black rounded-2xl overflow-hidden shadow-2xl">

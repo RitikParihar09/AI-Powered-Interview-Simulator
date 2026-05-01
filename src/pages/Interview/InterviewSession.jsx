@@ -89,7 +89,11 @@ const InterviewSession = ({ interviewData, onEndInterview }) => {
 
         const handlePopState = (e) => {
             if (isSessionActive && !isFinished) {
-                if (!window.confirm("An interview is in progress. Are you sure you want to leave? Your progress will be lost.")) {
+                if (window.confirm("An interview is in progress. Are you sure you want to leave? Your progress will be lost.")) {
+                    finishSession();
+                    // We need to go back one more time to skip the "trap" state we created
+                    window.history.back(); 
+                } else {
                     window.history.pushState(null, "", window.location.href);
                 }
             }
