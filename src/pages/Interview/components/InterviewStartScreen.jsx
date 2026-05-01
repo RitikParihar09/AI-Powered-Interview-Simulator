@@ -458,9 +458,9 @@ const InterviewStartScreen = ({ interviewData, candidateName, onStart, isPrepari
                                 answers, and helping you perform your best.
                             </p>
 
-                            {/* ORB - Moved into flow to avoid overlap across environments */}
-                            <div className="relative -mt-80">
-                                <div className="absolute inset-0 w-[400px] h-[400px] -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 bg-blue-500/10 blur-[100px] animate-pulse pointer-events-none"></div>
+                            {/* ORB - Fixed layout size to match scale-150 (240 * 1.5 = 360) */}
+                            <div className="relative mt-0 w-full flex justify-center h-[360px]">
+                                <div className="absolute inset-0 w-[450px] h-[450px] -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 bg-blue-500/10 blur-[120px] animate-pulse pointer-events-none"></div>
                                 <div className="w-[240px] h-[240px] relative transform scale-150">
                                     <AIOrb isSpeaking={true} />
                                 </div>
