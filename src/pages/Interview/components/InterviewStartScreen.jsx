@@ -431,7 +431,7 @@ const InterviewStartScreen = ({ interviewData, candidateName, onStart, isPrepari
                 </div>
 
                 {/* RIGHT PANEL: HERO & PREVIEW (7 cols) */}
-                <div className={`col-span-1 lg:col-span-7 flex flex-col items-center relative min-h-[80vh] ${!isSystemReady ? 'justify-start pt-12' : 'justify-center'}`}>
+                <div className="col-span-1 lg:col-span-7 flex flex-col items-center relative min-h-[80vh] pt-12">
                     {!isSystemReady ? (
                         <div className="w-full max-w-2xl text-center flex flex-col items-center justify-center gap-6 relative z-10">
                             <span className="text-xl md:text-2xl text-indigo-400 font-semibold">
@@ -471,7 +471,7 @@ const InterviewStartScreen = ({ interviewData, candidateName, onStart, isPrepari
                     ) : (
 
                         // ===================== READY STATE (VIDEO) =====================
-                        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col gap-6 items-center transform -translate-y-8">
+                        <div className="w-full max-w-xl my-auto animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col gap-6 items-center transform -translate-y-8">
 
                             {/* VIDEO */}
                             <div className="relative w-full aspect-video bg-gray-900 dark:bg-black rounded-2xl overflow-hidden shadow-2xl">
